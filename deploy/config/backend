@@ -1,0 +1,3 @@
+# Image path: /app/config/backend — optional. Copy from backend/.env before build, or set vars only in EB.
+# DATABASE_URL=
+# FRONTEND_ORIGIN=

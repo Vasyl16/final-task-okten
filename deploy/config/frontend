@@ -1,0 +1,4 @@
+# Image path: /app/config/frontend — /config.js is generated from this + process env (EB wins).
+VITE_API_URL=/api
+VITE_GOOGLE_CLIENT_ID=
+VITE_GOOGLE_MAPS_API_KEY=

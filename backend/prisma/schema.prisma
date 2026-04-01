@@ -1,0 +1,149 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum InstitutionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum NewsCategory {
+  GENERAL
+  PROMOTION
+  EVENT
+}
+
+model User {
+  id           String        @id @default(uuid()) @db.Uuid
+  name         String        
+  email        String        @unique
+  googleId     String?       @unique
+  password     String
+  refreshToken String?
+  role         UserRole      @default(USER)
+  isCritic     Boolean       @default(false)
+  createdAt    DateTime      @default(now())
+  institutions Institution[]
+  reviews      Review[]
+  favorites    Favorite[]
+  piyachoks    Piyachok[]
+}
+
+model Institution {
+  id            String            @id @default(uuid()) @db.Uuid
+  name          String
+  description   String?
+  city          String?
+  images        String[]          @default([])
+  lat           Float
+  lng           Float
+  status        InstitutionStatus @default(PENDING)
+  ownerId       String            @db.Uuid
+  owner         User              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  averageRating Float             @default(0)
+  reviewsCount  Int               @default(0)
+  viewsCount    Int               @default(0)
+  createdAt     DateTime          @default(now())
+  reviews       Review[]
+  favorites     Favorite[]
+  news          News[]
+  piyachoks     Piyachok[]
+  viewEvents    ViewEvent[]
+  topCategories TopCategory[]
+
+  @@index([ownerId])
+}
+
+model Review {
+  id            String      @id @default(uuid()) @db.Uuid
+  rating        Int
+  text          String?
+  averageCheck  Float?
+  userId        String      @db.Uuid
+  institutionId String      @db.Uuid
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now())
+
+  @@unique([userId, institutionId])
+  @@index([institutionId])
+  @@index([userId])
+}
+
+model Favorite {
+  id            String      @id @default(uuid()) @db.Uuid
+  userId        String      @db.Uuid
+  institutionId String      @db.Uuid
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now())
+
+  @@unique([userId, institutionId])
+  @@index([userId])
+  @@index([institutionId])
+}
+
+model News {
+  id            String       @id @default(uuid()) @db.Uuid
+  title         String
+  content       String
+  imageUrl      String?
+  category      NewsCategory
+  institutionId String       @db.Uuid
+  institution   Institution  @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  createdAt     DateTime     @default(now())
+
+  @@index([institutionId])
+  @@index([category])
+}
+
+model Piyachok {
+  id               String      @id @default(uuid()) @db.Uuid
+  institutionId    String      @db.Uuid
+  userId           String      @db.Uuid
+  date             DateTime
+  description      String
+  peopleCount      Int
+  genderPreference String?
+  budget           Float?
+  whoPays          String?
+  institution      Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  user             User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt        DateTime    @default(now())
+
+  @@index([institutionId])
+  @@index([userId])
+}
+
+model ViewEvent {
+  id            String      @id @default(uuid()) @db.Uuid
+  institutionId String      @db.Uuid
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now())
+
+  @@index([institutionId])
+  @@index([createdAt])
+}
+
+model TopCategory {
+  id           String        @id @default(uuid()) @db.Uuid
+  name         String
+  institutions Institution[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
