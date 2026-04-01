@@ -1,6 +1,8 @@
 # Local / staging: nginx :80 → / and /api → backend:3000
-# Set backend/.env (DATABASE_URL, JWT_*, AWS_*, etc.)
-# Optional: export VITE_* for frontend build args when building web image
+#
+# Backend loads DATABASE_URL, JWT_*, AWS_*, etc. from ./backend/.env (see backend/.env.example).
+# Overrides below win over keys present in that file (e.g. FRONTEND_ORIGIN for the :80 UI).
+# Optional for web build: export VITE_* or set in a project-root .env for Compose substitution.
 
 services:
   backend:
@@ -14,7 +16,7 @@ services:
     environment:
       PORT: "3000"
       NODE_ENV: production
-      # Same browser origin when using http://localhost (port 80) for UI
+      # Browser hits nginx on :80 — align CORS with http://localhost (not :5173)
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost}
     restart: unless-stopped
 
@@ -22,17 +24,10 @@ services:
     build:
       context: .
       dockerfile: nginx/Dockerfile
-      args:
-        VITE_API_URL: /api
-        VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-}
-        VITE_GOOGLE_MAPS_API_KEY: ${VITE_GOOGLE_MAPS_API_KEY:-}
-    environment:
-      # Overrides values in deploy/config/frontend at container start (config.js)
-      VITE_API_URL: ${VITE_API_URL:-/api}
-      VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-}
-      VITE_GOOGLE_MAPS_API_KEY: ${VITE_GOOGLE_MAPS_API_KEY:-}
     ports:
       - "80:80"
+    env_file:
+      - ./frontend/.env
     depends_on:
       - backend
     restart: unless-stopped
