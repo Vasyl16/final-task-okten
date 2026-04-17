@@ -1,22 +1,35 @@
 import { useMemo } from 'react'
-import { useGetFavoritesQuery } from '@/shared/api/favorites/get-favorites.query'
+import { useGetFavoriteInstitutionIdsQuery } from '@/shared/api/favorites/get-favorites.query'
 import { useGetTopCategoriesQuery } from '@/shared/api/top.api'
+import { useClampPage, useSearchParamPage } from '@/shared/lib/use-search-param-page'
 import { Button } from '@/shared/ui/button'
+import { Pagination } from '@/shared/ui/pagination'
 import { TopCategoryBlock } from '@/widgets/top/TopCategoryBlock'
 
+const PAGE_SIZE = 12
+const INSTITUTIONS_PER_CATEGORY = 50
+
 export function TopPage() {
+  const [page, setPage] = useSearchParamPage()
+
   const {
-    data: categories = [],
+    data,
     isLoading,
     error,
     refetch,
-  } = useGetTopCategoriesQuery()
-  const { data: favorites = [] } = useGetFavoritesQuery()
+  } = useGetTopCategoriesQuery({
+    page,
+    limit: PAGE_SIZE,
+    institutionsLimit: INSTITUTIONS_PER_CATEGORY,
+  })
+  const categories = data?.items ?? []
+  const pageCount = data?.pageCount ?? 1
 
-  const favoriteIds = useMemo(
-    () => new Set(favorites.map((institution) => institution.id)),
-    [favorites],
-  )
+  useClampPage(page, pageCount, setPage)
+
+  const { data: favoriteIdsList = [] } = useGetFavoriteInstitutionIdsQuery()
+
+  const favoriteIds = useMemo(() => new Set(favoriteIdsList), [favoriteIdsList])
 
   if (isLoading) {
     return (
@@ -90,6 +103,8 @@ export function TopPage() {
           favoriteIds={favoriteIds}
         />
       ))}
+
+      <Pagination page={page} pageCount={pageCount} onPageChange={setPage} />
     </section>
   )
 }

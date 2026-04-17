@@ -11,9 +11,12 @@ import {
   Review,
   UserRole,
 } from '@prisma/client';
+import { resolvePageCount, resolvePagination } from '../../common/pagination';
 import { AuthenticatedUser } from '../auth/jwt.strategy';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateReviewDto } from './dto/create-review.dto';
+import { ListInstitutionReviewsQueryDto } from './dto/list-institution-reviews-query.dto';
+import { ListMyReviewsQueryDto } from './dto/list-my-reviews-query.dto';
 import { UpdateReviewDto } from './dto/update-review.dto';
 
 type ReviewWithAuthorWeight = Review & {
@@ -134,51 +137,92 @@ export class ReviewsService {
 
   async findByInstitution(
     institutionId: string,
+    query: ListInstitutionReviewsQueryDto,
     currentUser?: AuthenticatedUser | null,
-  ): Promise<ReviewWithAuthor[]> {
+  ): Promise<{
+    items: ReviewWithAuthor[];
+    total: number;
+    page: number;
+    limit: number;
+    pageCount: number;
+  }> {
     const institution = await this.getInstitutionById(institutionId);
 
     this.ensureCanAccessInstitutionReviews(institution, currentUser);
 
-    return this.prismaService.review.findMany({
-      where: { institutionId },
-      orderBy: { createdAt: 'desc' },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            isCritic: true,
+    const { page, limit, skip } = resolvePagination(query, 12);
+    const where = { institutionId };
+
+    const [total, items] = await Promise.all([
+      this.prismaService.review.count({ where }),
+      this.prismaService.review.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              isCritic: true,
+            },
           },
         },
-      },
-    });
+        skip,
+        take: limit,
+      }),
+    ]);
+
+    const pageCount = resolvePageCount(total, limit);
+
+    return { items, total, page, limit, pageCount };
   }
 
-  async findMine(currentUser: AuthenticatedUser): Promise<ReviewWithInstitution[]> {
-    return this.prismaService.review.findMany({
-      where: {
-        userId: currentUser.id,
-      },
-      orderBy: { createdAt: 'desc' },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            isCritic: true,
+  async findMine(
+    currentUser: AuthenticatedUser,
+    query: ListMyReviewsQueryDto,
+  ): Promise<{
+    items: ReviewWithInstitution[];
+    total: number;
+    page: number;
+    limit: number;
+    pageCount: number;
+  }> {
+    const { page, limit, skip } = resolvePagination(query, 12);
+    const where = {
+      userId: currentUser.id,
+      ...(query.institutionId ? { institutionId: query.institutionId } : {}),
+    };
+
+    const [total, items] = await Promise.all([
+      this.prismaService.review.count({ where }),
+      this.prismaService.review.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              isCritic: true,
+            },
+          },
+          institution: {
+            select: {
+              id: true,
+              name: true,
+            },
           },
         },
-        institution: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
-    });
+        skip,
+        take: limit,
+      }),
+    ]);
+
+    const pageCount = resolvePageCount(total, limit);
+
+    return { items, total, page, limit, pageCount };
   }
 
   private async getReviewById(id: string): Promise<Review> {

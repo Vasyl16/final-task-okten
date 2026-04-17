@@ -5,6 +5,7 @@ import {
   HttpStatus,
   Post,
   Req,
+  UseFilters,
   UseGuards,
 } from '@nestjs/common';
 import { Request } from 'express';
@@ -13,6 +14,7 @@ import { GoogleAuthDto } from './dto/google-auth.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { RegisterDto } from './dto/register.dto';
+import { LoginBadRequestToUnauthorizedFilter } from './filters/login-bad-request.filter';
 import { JwtAuthGuard } from './jwt.guard';
 import { AuthenticatedUser } from './jwt.strategy';
 
@@ -31,6 +33,7 @@ export class AuthController {
 
   @HttpCode(HttpStatus.OK)
   @Post('login')
+  @UseFilters(LoginBadRequestToUnauthorizedFilter)
   login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
   }

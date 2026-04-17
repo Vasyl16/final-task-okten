@@ -5,10 +5,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Piyachok, Prisma } from '@prisma/client';
+import { resolvePageCount, resolvePagination } from '../../common/pagination';
 import { AuthenticatedUser } from '../auth/jwt.strategy';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreatePiyachokDto } from './dto/create-piyachok.dto';
 import { PiyachokDetailDto } from './dto/piyachok-detail.dto';
+import { ListMyPiyachokQueryDto } from './dto/list-my-piyachok-query.dto';
 import { ListPublicPiyachokQueryDto } from './dto/list-public-piyachok-query.dto';
 import { PublicPiyachokItemDto } from './dto/public-piyachok-item.dto';
 
@@ -181,22 +183,43 @@ export class PiyachokService {
     });
   }
 
-  async findMine(currentUser: AuthenticatedUser): Promise<PiyachokWithUserName[]> {
-    return this.prismaService.piyachok.findMany({
-      where: {
-        userId: currentUser.id,
-      },
-      include: {
-        user: {
-          select: {
-            name: true,
+  async findMine(
+    currentUser: AuthenticatedUser,
+    query: ListMyPiyachokQueryDto,
+  ): Promise<{
+    items: PiyachokWithUserName[];
+    total: number;
+    page: number;
+    limit: number;
+    pageCount: number;
+  }> {
+    const { page, limit, skip } = resolvePagination(query, 12);
+    const where = {
+      userId: currentUser.id,
+    };
+
+    const [total, items] = await Promise.all([
+      this.prismaService.piyachok.count({ where }),
+      this.prismaService.piyachok.findMany({
+        where,
+        include: {
+          user: {
+            select: {
+              name: true,
+            },
           },
         },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+        orderBy: {
+          createdAt: 'desc',
+        },
+        skip,
+        take: limit,
+      }),
+    ]);
+
+    const pageCount = resolvePageCount(total, limit);
+
+    return { items, total, page, limit, pageCount };
   }
 
   async remove(id: string, currentUser: AuthenticatedUser): Promise<void> {

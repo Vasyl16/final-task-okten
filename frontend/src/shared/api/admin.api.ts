@@ -1,5 +1,6 @@
 import type { UserRole } from '@/entities/user/types'
 import { baseApi } from '@/shared/api/rtk/base-api'
+import type { PaginatedList } from '@/shared/api/paginated.types'
 
 export type AdminUser = {
   id: string
@@ -64,15 +65,26 @@ type CategoryInstitutionPayload = {
   institutionId: string
 }
 
+export type AdminListParams = {
+  page?: number
+  limit?: number
+}
+
 export const adminApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getAdminUsers: builder.query<AdminUser[], void>({
-      query: () => '/admin/users',
+    getAdminUsers: builder.query<PaginatedList<AdminUser>, AdminListParams | void>({
+      query: (params) => ({
+        url: '/admin/users',
+        params: {
+          page: params?.page ?? 1,
+          limit: params?.limit ?? 12,
+        },
+      }),
       providesTags: (result) =>
-        result
+        result?.items?.length
           ? [
               { type: 'AdminUsers', id: 'LIST' },
-              ...result.map((user) => ({ type: 'AdminUsers' as const, id: user.id })),
+              ...result.items.map((user) => ({ type: 'AdminUsers' as const, id: user.id })),
             ]
           : [{ type: 'AdminUsers', id: 'LIST' }],
     }),
@@ -97,13 +109,22 @@ export const adminApi = baseApi.injectEndpoints({
       invalidatesTags: [{ type: 'AdminUsers', id: 'LIST' }],
     }),
 
-    getPendingInstitutions: builder.query<PendingInstitution[], void>({
-      query: () => '/admin/institutions/pending',
+    getPendingInstitutions: builder.query<
+      PaginatedList<PendingInstitution>,
+      AdminListParams | void
+    >({
+      query: (params) => ({
+        url: '/admin/institutions/pending',
+        params: {
+          page: params?.page ?? 1,
+          limit: params?.limit ?? 12,
+        },
+      }),
       providesTags: (result) =>
-        result
+        result?.items?.length
           ? [
               { type: 'PendingInstitutions', id: 'LIST' },
-              ...result.map((institution) => ({
+              ...result.items.map((institution) => ({
                 type: 'PendingInstitutions' as const,
                 id: institution.id,
               })),
@@ -130,13 +151,22 @@ export const adminApi = baseApi.injectEndpoints({
       invalidatesTags: [{ type: 'PendingInstitutions', id: 'LIST' }],
     }),
 
-    getAdminTopCategories: builder.query<AdminTopCategory[], void>({
-      query: () => '/admin/top-categories',
+    getAdminTopCategories: builder.query<
+      PaginatedList<AdminTopCategory>,
+      AdminListParams | void
+    >({
+      query: (params) => ({
+        url: '/admin/top-categories',
+        params: {
+          page: params?.page ?? 1,
+          limit: params?.limit ?? 50,
+        },
+      }),
       providesTags: (result) =>
-        result
+        result?.items?.length
           ? [
               { type: 'AdminTopCategories', id: 'LIST' },
-              ...result.map((category) => ({
+              ...result.items.map((category) => ({
                 type: 'AdminTopCategories' as const,
                 id: category.id,
               })),
@@ -150,7 +180,10 @@ export const adminApi = baseApi.injectEndpoints({
         method: 'POST',
         body,
       }),
-      invalidatesTags: [{ type: 'AdminTopCategories', id: 'LIST' }],
+      invalidatesTags: [
+        { type: 'AdminTopCategories', id: 'LIST' },
+        { type: 'PublicTopCategories', id: 'LIST' },
+      ],
     }),
 
     updateTopCategory: builder.mutation<AdminTopCategory, TopCategoryMutationPayload>({
@@ -162,6 +195,7 @@ export const adminApi = baseApi.injectEndpoints({
       invalidatesTags: (_result, _error, { id }) => [
         { type: 'AdminTopCategories', id },
         { type: 'AdminTopCategories', id: 'LIST' },
+        { type: 'PublicTopCategories', id: 'LIST' },
       ],
     }),
 
@@ -170,7 +204,10 @@ export const adminApi = baseApi.injectEndpoints({
         url: `/admin/top-categories/${id}`,
         method: 'DELETE',
       }),
-      invalidatesTags: [{ type: 'AdminTopCategories', id: 'LIST' }],
+      invalidatesTags: [
+        { type: 'AdminTopCategories', id: 'LIST' },
+        { type: 'PublicTopCategories', id: 'LIST' },
+      ],
     }),
 
     addInstitutionToTopCategory: builder.mutation<
@@ -184,6 +221,7 @@ export const adminApi = baseApi.injectEndpoints({
       invalidatesTags: (_result, _error, { categoryId }) => [
         { type: 'AdminTopCategories', id: categoryId },
         { type: 'AdminTopCategories', id: 'LIST' },
+        { type: 'PublicTopCategories', id: 'LIST' },
       ],
     }),
 
@@ -198,17 +236,33 @@ export const adminApi = baseApi.injectEndpoints({
       invalidatesTags: (_result, _error, { categoryId }) => [
         { type: 'AdminTopCategories', id: categoryId },
         { type: 'AdminTopCategories', id: 'LIST' },
+        { type: 'PublicTopCategories', id: 'LIST' },
       ],
     }),
 
-    getInstitutionAnalytics: builder.query<InstitutionAnalyticsItem[], void>({
-      query: () => '/admin/analytics/institutions',
+    getInstitutionAnalytics: builder.query<
+      PaginatedList<InstitutionAnalyticsItem>,
+      AdminListParams | void
+    >({
+      query: (params) => ({
+        url: '/admin/analytics/institutions',
+        params: {
+          page: params?.page ?? 1,
+          limit: params?.limit ?? 12,
+        },
+      }),
       providesTags: [{ type: 'AdminAnalytics', id: 'LIST' }],
     }),
 
-    getInstitutionAnalyticsById: builder.query<InstitutionViewsByDateItem[], string>({
-      query: (id) => `/admin/analytics/institutions/${id}`,
-      providesTags: (_result, _error, id) => [{ type: 'AdminAnalyticsDetail', id }],
+    getInstitutionAnalyticsById: builder.query<
+      PaginatedList<InstitutionViewsByDateItem>,
+      { id: string } & AdminListParams
+    >({
+      query: ({ id, page = 1, limit = 12 }) => ({
+        url: `/admin/analytics/institutions/${id}`,
+        params: { page, limit },
+      }),
+      providesTags: (_result, _error, { id }) => [{ type: 'AdminAnalyticsDetail', id }],
     }),
   }),
 })

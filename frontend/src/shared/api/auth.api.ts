@@ -13,6 +13,7 @@ export type RegisterPayload = {
   name: string
   email: string
   password: string
+  passwordConfirm: string
 }
 
 export type GoogleAuthPayload = {

@@ -1,5 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import { resolvePageCount, resolvePagination } from '../../common/pagination';
 import { AuthenticatedUser } from '../auth/jwt.strategy';
 import { InstitutionsService } from '../institutions/institutions.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -14,8 +16,8 @@ export class AdminService {
     private readonly institutionsService: InstitutionsService,
   ) {}
 
-  async getPendingInstitutions() {
-    return this.institutionsService.findPending();
+  async getPendingInstitutions(query: PaginationQueryDto) {
+    return this.institutionsService.findPending(query);
   }
 
   async approveInstitution(id: string, currentUser: AuthenticatedUser) {
@@ -26,20 +28,30 @@ export class AdminService {
     return this.institutionsService.reject(id, currentUser);
   }
 
-  async getUsers() {
-    return this.prismaService.user.findMany({
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        isCritic: true,
-        createdAt: true,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+  async getUsers(query: PaginationQueryDto) {
+    const { page, limit, skip } = resolvePagination(query, 12);
+    const [total, items] = await Promise.all([
+      this.prismaService.user.count(),
+      this.prismaService.user.findMany({
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          isCritic: true,
+          createdAt: true,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        skip,
+        take: limit,
+      }),
+    ]);
+
+    const pageCount = resolvePageCount(total, limit);
+
+    return { items, total, page, limit, pageCount };
   }
 
   async updateUser(id: string, updateUserDto: UpdateUserDto) {
@@ -73,21 +85,32 @@ export class AdminService {
     }
   }
 
-  async getTopCategories() {
-    return this.prismaService.topCategory.findMany({
-      include: {
-        institutions: {
-          select: {
-            id: true,
-            name: true,
-            status: true,
+  async getTopCategories(query: PaginationQueryDto) {
+    const { page, limit, skip } = resolvePagination(query, 12);
+
+    const [total, items] = await Promise.all([
+      this.prismaService.topCategory.count(),
+      this.prismaService.topCategory.findMany({
+        include: {
+          institutions: {
+            select: {
+              id: true,
+              name: true,
+              status: true,
+            },
           },
         },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+        orderBy: {
+          createdAt: 'desc',
+        },
+        skip,
+        take: limit,
+      }),
+    ]);
+
+    const pageCount = resolvePageCount(total, limit);
+
+    return { items, total, page, limit, pageCount };
   }
 
   async createTopCategory(createTopCategoryDto: CreateTopCategoryDto) {

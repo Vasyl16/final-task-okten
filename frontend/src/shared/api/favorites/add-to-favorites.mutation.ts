@@ -9,6 +9,7 @@ export const favoritesAddApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: (_result, _error, id) => [
         { type: 'FavoriteList', id: 'LIST' },
+        { type: 'FavoriteIds', id: 'LIST' },
         { type: 'Institution', id },
         { type: 'InstitutionList', id: 'LIST' },
       ],

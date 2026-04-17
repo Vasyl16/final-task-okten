@@ -9,6 +9,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -17,11 +18,8 @@ import { JwtAuthGuard } from '../auth/jwt.guard';
 import { AuthenticatedUser } from '../auth/jwt.strategy';
 import { AdminGuard } from './admin.guard';
 import { AdminService } from './admin.service';
-import {
-  AnalyticsService,
-  InstitutionAnalyticsItem,
-  InstitutionViewsByDateItem,
-} from './analytics.service';
+import { AnalyticsService } from './analytics.service';
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { CreateTopCategoryDto } from '../top-categories/dto/create-top-category.dto';
 import { UpdateTopCategoryDto } from '../top-categories/dto/update-top-category.dto';
@@ -39,20 +37,21 @@ export class AdminController {
   ) {}
 
   @Get('analytics/institutions')
-  getInstitutionAnalytics(): Promise<InstitutionAnalyticsItem[]> {
-    return this.analyticsService.getInstitutionAnalytics();
+  getInstitutionAnalytics(@Query() query: PaginationQueryDto) {
+    return this.analyticsService.getInstitutionAnalytics(query);
   }
 
   @Get('analytics/institutions/:id')
   getInstitutionAnalyticsById(
     @Param('id', new ParseUUIDPipe()) id: string,
-  ): Promise<InstitutionViewsByDateItem[]> {
-    return this.analyticsService.getInstitutionAnalyticsById(id);
+    @Query() query: PaginationQueryDto,
+  ) {
+    return this.analyticsService.getInstitutionAnalyticsById(id, query);
   }
 
   @Get('institutions/pending')
-  getPendingInstitutions() {
-    return this.adminService.getPendingInstitutions();
+  getPendingInstitutions(@Query() query: PaginationQueryDto) {
+    return this.adminService.getPendingInstitutions(query);
   }
 
   @Patch('institutions/:id/approve')
@@ -72,8 +71,8 @@ export class AdminController {
   }
 
   @Get('users')
-  getUsers() {
-    return this.adminService.getUsers();
+  getUsers(@Query() query: PaginationQueryDto) {
+    return this.adminService.getUsers(query);
   }
 
   @Patch('users/:id')
@@ -91,8 +90,8 @@ export class AdminController {
   }
 
   @Get('top-categories')
-  getTopCategories() {
-    return this.adminService.getTopCategories();
+  getTopCategories(@Query() query: PaginationQueryDto) {
+    return this.adminService.getTopCategories(query);
   }
 
   @Post('top-categories')

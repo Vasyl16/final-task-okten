@@ -16,6 +16,8 @@ import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { RegisterDto } from './dto/register.dto';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
+import { isEmail } from 'class-validator';
+import { LOGIN_FAILED_MESSAGE } from './auth.constants';
 
 export interface AuthTokens {
   accessToken: string;
@@ -61,6 +63,10 @@ export class AuthService {
 
     if (existingUser) {
       throw new ConflictException('Email is already in use');
+    }
+
+    if (registerDto.password !== registerDto.passwordConfirm) {
+      throw new BadRequestException('Passwords do not match');
     }
 
     const hashedPassword = await bcrypt.hash(

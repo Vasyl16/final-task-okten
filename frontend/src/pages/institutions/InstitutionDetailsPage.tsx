@@ -1,14 +1,13 @@
 import { Eye, MapPin, Navigation, Star } from 'lucide-react'
-import { useEffect, useMemo, useRef } from 'react'
+import { useMemo, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { ReviewsList } from '@/entities/review/ReviewsList'
 import { useAuthStore } from '@/entities/user/model/auth.store'
 import { FavoriteButton } from '@/features/favorites/FavoriteButton'
 import { AddReviewForm } from '@/features/review/AddReviewForm'
-import { useGetFavoritesQuery } from '@/shared/api/favorites/get-favorites.query'
+import { useGetFavoriteInstitutionIdsQuery } from '@/shared/api/favorites/get-favorites.query'
 import { useGetInstitutionByIdQuery } from '@/shared/api/institutions/get-by-id.query'
-import { useGetMyInstitutionsQuery } from '@/shared/api/institutions/get-mine.query'
-import { useGetReviewsByInstitutionQuery } from '@/shared/api/reviews.api'
+import { useGetReviewsByInstitutionQuery, useGetMyReviewsQuery } from '@/shared/api/reviews.api'
 import { useTrackInstitutionViewMutation } from '@/shared/api/institutions/track-view.mutation'
 import {
   googleMapsDirectionsUrl,
@@ -16,15 +15,20 @@ import {
   googleMapsSearchUrl,
 } from '@/shared/lib/maps'
 import { getGoogleMapsApiKey } from '@/shared/lib/runtime-env'
+import { useClampPage, useSearchParamPage } from '@/shared/lib/use-search-param-page'
 import { Button } from '@/shared/ui/button'
+import { Pagination } from '@/shared/ui/pagination'
 
 const mapsApiKey = getGoogleMapsApiKey()
+const REVIEWS_PAGE_SIZE = 12
 
 export function InstitutionDetailsPage() {
   const { id = '' } = useParams<{ id: string }>()
   const trackedInstitutionId = useRef<string | null>(null)
   const user = useAuthStore((state) => state.user)
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const [reviewsPage, setReviewsPage] = useSearchParamPage('rpage')
+
   const {
     data: institution,
     isLoading,
@@ -33,36 +37,50 @@ export function InstitutionDetailsPage() {
   } = useGetInstitutionByIdQuery(id, {
     skip: !id,
   })
-  const { data: myInstitutions = [] } = useGetMyInstitutionsQuery(undefined, {
+
+  const { data: favoriteIdsList = [] } = useGetFavoriteInstitutionIdsQuery(undefined, {
     skip: !isAuthenticated,
   })
-  const { data: favorites = [] } = useGetFavoritesQuery()
+
   const {
-    data: reviews = [],
+    data: reviewsData,
     isLoading: isReviewsLoading,
-  } = useGetReviewsByInstitutionQuery(id, {
-    skip: !id,
-  })
+  } = useGetReviewsByInstitutionQuery(
+    { institutionId: id, page: reviewsPage, limit: REVIEWS_PAGE_SIZE },
+    {
+      skip: !id,
+    },
+  )
+
+  const { data: myReviewProbe } = useGetMyReviewsQuery(
+    { institutionId: id, page: 1, limit: 1 },
+    { skip: !isAuthenticated || !id },
+  )
+
+  const reviews = reviewsData?.items ?? []
+  const reviewsPageCount = reviewsData?.pageCount ?? 1
+  const hasOwnReview = (myReviewProbe?.total ?? 0) > 0
+
+  useClampPage(reviewsPage, reviewsPageCount, setReviewsPage)
+
   const [trackView] = useTrackInstitutionViewMutation()
 
   const isFavorite = useMemo(
-    () => favorites.some((favorite) => favorite.id === institution?.id),
-    [favorites, institution?.id],
-  )
-  const criticsCount = useMemo(
-    () => reviews.filter((review) => review.user.isCritic).length,
-    [reviews],
+    () => (institution ? favoriteIdsList.includes(institution.id) : false),
+    [favoriteIdsList, institution?.id],
   )
 
   const isViewerOwner = useMemo(() => {
     if (!user || !institution) {
       return false
     }
-    if (institution.ownerId && institution.ownerId === user.id) {
-      return true
-    }
-    return myInstitutions.some((item) => item.id === institution.id)
-  }, [user, institution, myInstitutions])
+
+    return institution.ownerId === user.id
+  }, [user, institution])
+
+  useEffect(() => {
+    setReviewsPage(1)
+  }, [id])
 
   useEffect(() => {
     if (!id || trackedInstitutionId.current === id) {
@@ -120,11 +138,6 @@ export function InstitutionDetailsPage() {
               {institution.averageRating.toFixed(1)}
             </span>
             <span>{institution.reviewsCount} відгуків</span>
-            {criticsCount >= 2 ? (
-              <span className="rounded-full bg-yellow-100 px-2.5 py-1 text-xs font-medium text-yellow-800">
-                Включає оцінки критиків
-              </span>
-            ) : null}
             <span className="inline-flex items-center gap-1">
               <Eye className="size-4" />
               {institution.viewsCount} переглядів
@@ -210,7 +223,7 @@ export function InstitutionDetailsPage() {
       </div>
 
       {!isViewerOwner ? (
-        <AddReviewForm institutionId={institution.id} reviews={reviews} />
+        <AddReviewForm institutionId={institution.id} hasOwnReview={hasOwnReview} />
       ) : null}
 
       <div className="space-y-4">
@@ -225,6 +238,11 @@ export function InstitutionDetailsPage() {
           institutionId={institution.id}
           reviews={reviews}
           isLoading={isReviewsLoading}
+        />
+        <Pagination
+          page={reviewsPage}
+          pageCount={reviewsPageCount}
+          onPageChange={setReviewsPage}
         />
       </div>
     </section>

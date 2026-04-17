@@ -2,6 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { NewsCard } from '@/entities/news/NewsCard'
 import { useGetAllNewsQuery } from '@/shared/api/news.api'
+import { useNewsListingParams } from '@/shared/lib/listing-search-params'
+import { useDebouncedValue } from '@/shared/lib/use-debounced-value'
+import { useClampPage } from '@/shared/lib/use-search-param-page'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Pagination } from '@/shared/ui/pagination'
@@ -26,22 +29,44 @@ function NewsCardSkeleton() {
 }
 
 export function NewsPage() {
-  const [page, setPage] = useState(1)
-  const [search, setSearch] = useState('')
-  const [sort, setSort] = useState<'asc' | 'desc'>('desc')
-  const [category, setCategory] = useState<'GENERAL' | 'PROMOTION' | 'EVENT' | ''>('')
+  const {
+    search,
+    category,
+    sort,
+    page,
+    setPage,
+    setSearch,
+    setCategory,
+    setSort,
+  } = useNewsListingParams()
+
+  const [searchInput, setSearchInput] = useState(search)
 
   useEffect(() => {
-    setPage(1)
-  }, [search, sort, category])
+    setSearchInput(search)
+  }, [search])
+
+  const debouncedSearch = useDebouncedValue(searchInput)
+
+  useEffect(() => {
+    if (debouncedSearch.trim() === search.trim()) {
+      return
+    }
+    setSearch(debouncedSearch)
+  }, [debouncedSearch, search, setSearch])
 
   const queryParams = useMemo(
     () => ({
       page,
       limit: PAGE_SIZE,
       search,
-      sort,
-      category: category || undefined,
+      sort: sort as 'asc' | 'desc',
+      category:
+        category === 'GENERAL' ||
+        category === 'PROMOTION' ||
+        category === 'EVENT'
+          ? (category as 'GENERAL' | 'PROMOTION' | 'EVENT')
+          : undefined,
     }),
     [category, page, search, sort],
   )
@@ -49,6 +74,8 @@ export function NewsPage() {
   const { data, isLoading, isError } = useGetAllNewsQuery(queryParams)
   const items = data?.items ?? []
   const pageCount = data?.pageCount ?? 1
+
+  useClampPage(page, pageCount, setPage)
 
   return (
     <section className="space-y-8">
@@ -68,15 +95,22 @@ export function NewsPage() {
       <div className="grid gap-3 rounded-2xl border bg-card p-4 md:grid-cols-3">
         <Input
           placeholder="Пошук за заголовком"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
+          value={searchInput}
+          onChange={(event) => setSearchInput(event.target.value)}
+          type="search"
+          autoComplete="off"
         />
         <select
           className="flex h-10 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
           value={category}
-          onChange={(event) =>
-            setCategory(event.target.value as typeof category)
-          }
+          onChange={(event) => {
+            const value = event.target.value
+            if (value === '') {
+              setCategory('')
+            } else {
+              setCategory(value as 'GENERAL' | 'PROMOTION' | 'EVENT')
+            }
+          }}
         >
           <option value="">Усі категорії</option>
           <option value="GENERAL">Загальні</option>

@@ -58,6 +58,7 @@ export const baseApi = createApi({
     'Institution',
     'InstitutionList',
     'FavoriteList',
+    'FavoriteIds',
     'CurrentUser',
     'MyReviews',
     'NewsList',
@@ -71,6 +72,7 @@ export const baseApi = createApi({
     'AdminTopCategories',
     'AdminAnalytics',
     'AdminAnalyticsDetail',
+    'PublicTopCategories',
   ],
   endpoints: () => ({}),
 })

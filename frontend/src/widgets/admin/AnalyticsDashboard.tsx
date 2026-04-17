@@ -1,36 +1,87 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import {
   useGetInstitutionAnalyticsByIdQuery,
   useGetInstitutionAnalyticsQuery,
 } from '@/shared/api/admin.api'
+import { useClampPage } from '@/shared/lib/use-search-param-page'
 import { Button } from '@/shared/ui/button'
+import { Pagination } from '@/shared/ui/pagination'
+
+const PAGE_SIZE = 12
+
+type AnalyticsDashboardProps = {
+  listPage: number
+  onListPageChange: (next: number | ((current: number) => number)) => void
+  detailPage: number
+  onDetailPageChange: (next: number | ((current: number) => number)) => void
+  selectedInstitutionId: string
+  onSelectedInstitutionIdChange: (id: string) => void
+}
 
 function formatViewsLabel(count: number) {
   return `${count} переглядів`
 }
 
-export function AnalyticsDashboard() {
+export function AnalyticsDashboard({
+  listPage,
+  onListPageChange,
+  detailPage,
+  onDetailPageChange,
+  selectedInstitutionId,
+  onSelectedInstitutionIdChange,
+}: AnalyticsDashboardProps) {
   const {
-    data: institutions = [],
+    data: analyticsData,
     isLoading,
     error,
     refetch,
-  } = useGetInstitutionAnalyticsQuery()
-  const [selectedInstitutionId, setSelectedInstitutionId] = useState<string>('')
+  } = useGetInstitutionAnalyticsQuery({
+    page: listPage,
+    limit: PAGE_SIZE,
+  })
+  const institutions = analyticsData?.items ?? []
+  const listPageCount = analyticsData?.pageCount ?? 1
+
+  useClampPage(listPage, listPageCount, onListPageChange)
 
   useEffect(() => {
-    if (!selectedInstitutionId && institutions.length > 0) {
-      setSelectedInstitutionId(institutions[0].institutionId)
+    if (institutions.length === 0) {
+      return
     }
-  }, [institutions, selectedInstitutionId])
+
+    const stillOnPage = institutions.some(
+      (item) => item.institutionId === selectedInstitutionId,
+    )
+
+    if (!selectedInstitutionId || !stillOnPage) {
+      onSelectedInstitutionIdChange(institutions[0].institutionId)
+    }
+  }, [
+    institutions,
+    selectedInstitutionId,
+    listPage,
+    onSelectedInstitutionIdChange,
+  ])
 
   const {
-    data: viewsByDay = [],
+    data: detailData,
     isLoading: isDetailsLoading,
     error: detailsError,
-  } = useGetInstitutionAnalyticsByIdQuery(selectedInstitutionId, {
-    skip: !selectedInstitutionId,
-  })
+  } = useGetInstitutionAnalyticsByIdQuery(
+    {
+      id: selectedInstitutionId,
+      page: detailPage,
+      limit: PAGE_SIZE,
+    },
+    {
+      skip: !selectedInstitutionId,
+    },
+  )
+
+  const viewsByDay = detailData?.items ?? []
+  const detailPageCount = detailData?.pageCount ?? 1
+
+  useClampPage(detailPage, detailPageCount, onDetailPageChange, Boolean(selectedInstitutionId))
 
   const maxViews = useMemo(() => {
     return viewsByDay.reduce((currentMax, item) => Math.max(currentMax, item.viewsCount), 0)
@@ -69,8 +120,8 @@ export function AnalyticsDashboard() {
 
       {!isLoading && !error && institutions.length > 0 ? (
         <div className="grid gap-4 xl:grid-cols-[340px_minmax(0,1fr)]">
-          <div className="rounded-2xl border p-4">
-            <h3 className="mb-3 font-medium">Заклади за переглядами</h3>
+          <div className="space-y-3 rounded-2xl border p-4">
+            <h3 className="font-medium">Заклади за переглядами</h3>
             <div className="space-y-2">
               {institutions.map((item) => {
                 const isActive = item.institutionId === selectedInstitutionId
@@ -83,7 +134,9 @@ export function AnalyticsDashboard() {
                       'w-full rounded-xl border px-4 py-3 text-left transition-colors',
                       isActive ? 'border-primary bg-primary/5' : 'hover:bg-accent',
                     ].join(' ')}
-                    onClick={() => setSelectedInstitutionId(item.institutionId)}
+                    onClick={() =>
+                      onSelectedInstitutionIdChange(item.institutionId)
+                    }
                   >
                     <div className="font-medium">{item.name}</div>
                     <div className="text-sm text-muted-foreground">
@@ -93,10 +146,15 @@ export function AnalyticsDashboard() {
                 )
               })}
             </div>
+            <Pagination
+              page={listPage}
+              pageCount={listPageCount}
+              onPageChange={onListPageChange}
+            />
           </div>
 
-          <div className="rounded-2xl border p-4">
-            <h3 className="mb-3 font-medium">Перегляди по днях</h3>
+          <div className="space-y-3 rounded-2xl border p-4">
+            <h3 className="mb-1 font-medium">Перегляди по днях</h3>
 
             {isDetailsLoading ? (
               <div className="space-y-3">
@@ -119,28 +177,35 @@ export function AnalyticsDashboard() {
             ) : null}
 
             {!isDetailsLoading && !detailsError && viewsByDay.length > 0 ? (
-              <div className="space-y-3">
-                {viewsByDay.map((item) => {
-                  const width = maxViews > 0 ? `${(item.viewsCount / maxViews) * 100}%` : '0%'
+              <>
+                <div className="space-y-3">
+                  {viewsByDay.map((item) => {
+                    const width = maxViews > 0 ? `${(item.viewsCount / maxViews) * 100}%` : '0%'
 
-                  return (
-                    <div key={item.date} className="space-y-1">
-                      <div className="flex items-center justify-between gap-3 text-sm">
-                        <span>{item.date}</span>
-                        <span className="text-muted-foreground">
-                          {formatViewsLabel(item.viewsCount)}
-                        </span>
+                    return (
+                      <div key={item.date} className="space-y-1">
+                        <div className="flex items-center justify-between gap-3 text-sm">
+                          <span>{item.date}</span>
+                          <span className="text-muted-foreground">
+                            {formatViewsLabel(item.viewsCount)}
+                          </span>
+                        </div>
+                        <div className="h-2 rounded-full bg-muted">
+                          <div
+                            className="h-2 rounded-full bg-primary transition-all"
+                            style={{ width }}
+                          />
+                        </div>
                       </div>
-                      <div className="h-2 rounded-full bg-muted">
-                        <div
-                          className="h-2 rounded-full bg-primary transition-all"
-                          style={{ width }}
-                        />
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
+                    )
+                  })}
+                </div>
+                <Pagination
+                  page={detailPage}
+                  pageCount={detailPageCount}
+                  onPageChange={onDetailPageChange}
+                />
+              </>
             ) : null}
           </div>
         </div>

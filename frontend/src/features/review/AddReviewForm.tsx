@@ -1,7 +1,6 @@
-import { type FormEvent, useMemo, useState } from 'react'
+import { type FormEvent, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { toast } from 'sonner'
-import type { Review } from '@/entities/review/types'
 import { useAuthStore } from '@/entities/user/model/auth.store'
 import { useCreateReviewMutation } from '@/shared/api/reviews.api'
 import { getErrorMessage } from '@/shared/lib/get-error-message'
@@ -11,11 +10,10 @@ import { LoadingSpinner } from '@/shared/ui/loading-spinner'
 
 type AddReviewFormProps = {
   institutionId: string
-  reviews: Review[]
+  hasOwnReview: boolean
 }
 
-export function AddReviewForm({ institutionId, reviews }: AddReviewFormProps) {
-  const currentUser = useAuthStore((state) => state.user)
+export function AddReviewForm({ institutionId, hasOwnReview }: AddReviewFormProps) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const location = useLocation()
   const [createReview, { isLoading }] = useCreateReviewMutation()
@@ -23,11 +21,6 @@ export function AddReviewForm({ institutionId, reviews }: AddReviewFormProps) {
   const [comment, setComment] = useState('')
   const [budget, setBudget] = useState('')
   const [error, setError] = useState<string | null>(null)
-
-  const hasOwnReview = useMemo(
-    () => reviews.some((review) => review.user.id === currentUser?.id),
-    [currentUser?.id, reviews],
-  )
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()

@@ -4,9 +4,15 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Favorite, InstitutionStatus, Prisma } from '@prisma/client';
+import { Favorite, Institution, InstitutionStatus, Prisma } from '@prisma/client';
+import { resolvePageCount, resolvePagination } from '../../common/pagination';
 import { AuthenticatedUser } from '../auth/jwt.strategy';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ListFavoritesQueryDto } from './dto/list-favorites-query.dto';
+
+type FavoriteWithInstitution = Favorite & {
+  institution: Institution;
+};
 
 @Injectable()
 export class FavoritesService {
@@ -53,20 +59,64 @@ export class FavoritesService {
     });
   }
 
-  async findAll(currentUser: AuthenticatedUser) {
-    return this.prismaService.favorite.findMany({
+  async findInstitutionIds(currentUser: AuthenticatedUser): Promise<string[]> {
+    const rows = await this.prismaService.favorite.findMany({
       where: {
         userId: currentUser.id,
         institution: {
           status: InstitutionStatus.APPROVED,
         },
       },
-      include: {
-        institution: true,
-      },
-      orderBy: {
-        createdAt: 'desc',
+      select: {
+        institutionId: true,
       },
     });
+
+    return rows.map((row) => row.institutionId);
+  }
+
+  async findAll(
+    currentUser: AuthenticatedUser,
+    query: ListFavoritesQueryDto,
+  ): Promise<{
+    items: FavoriteWithInstitution[];
+    total: number;
+    page: number;
+    limit: number;
+    pageCount: number;
+  }> {
+    const { page, limit, skip } = resolvePagination(query, 12);
+
+    const where = {
+      userId: currentUser.id,
+      institution: {
+        status: InstitutionStatus.APPROVED,
+      },
+    };
+
+    const [total, rows] = await Promise.all([
+      this.prismaService.favorite.count({ where }),
+      this.prismaService.favorite.findMany({
+        where,
+        include: {
+          institution: true,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        skip,
+        take: limit,
+      }),
+    ]);
+
+    const pageCount = resolvePageCount(total, limit);
+
+    return {
+      items: rows,
+      total,
+      page,
+      limit,
+      pageCount,
+    };
   }
 }

@@ -1,13 +1,20 @@
 import { Transform } from 'class-transformer';
-import { IsEmail, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsString } from 'class-validator';
 
+/**
+ * Лише типи полів для whitelist. Формат email і «заповненість» перевіряються в AuthService.login
+ * з єдиною відповіддю 401 (без деталей валідації в тілі відповіді).
+ */
 export class LoginDto {
-  @Transform(({ value }) => String(value).trim().toLowerCase())
-  @IsEmail()
+  @Transform(({ value }) =>
+    value === undefined || value === null ? '' : String(value).trim(),
+  )
+  @IsString()
   email!: string;
 
+  @Transform(({ value }) =>
+    value === undefined || value === null ? '' : String(value),
+  )
   @IsString()
-  @MinLength(8)
-  @MaxLength(72)
   password!: string;
 }

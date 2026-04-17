@@ -15,7 +15,11 @@ import { Input } from '@/shared/ui/input'
 import { LoadingSpinner } from '@/shared/ui/loading-spinner'
 
 export function TopCategoriesManager() {
-  const { data: categories = [], isLoading, error, refetch } = useGetAdminTopCategoriesQuery()
+  const { data: categoriesData, isLoading, error, refetch } = useGetAdminTopCategoriesQuery({
+    page: 1,
+    limit: 100,
+  })
+  const categories = categoriesData?.items ?? []
   const { data: institutionsData } = useGetInstitutionsQuery({
     page: 1,
     limit: 50,

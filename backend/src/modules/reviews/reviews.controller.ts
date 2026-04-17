@@ -9,6 +9,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -17,6 +18,8 @@ import { JwtAuthGuard } from '../auth/jwt.guard';
 import { AuthenticatedUser } from '../auth/jwt.strategy';
 import { OptionalJwtAuthGuard } from '../institutions/optional-jwt.guard';
 import { CreateReviewDto } from './dto/create-review.dto';
+import { ListInstitutionReviewsQueryDto } from './dto/list-institution-reviews-query.dto';
+import { ListMyReviewsQueryDto } from './dto/list-my-reviews-query.dto';
 import { UpdateReviewDto } from './dto/update-review.dto';
 import { ReviewsService } from './reviews.service';
 
@@ -63,16 +66,20 @@ export class ReviewsController {
 
   @UseGuards(JwtAuthGuard)
   @Get('reviews/my')
-  findMine(@Req() request: AuthenticatedRequest) {
-    return this.reviewsService.findMine(request.user);
+  findMine(
+    @Req() request: AuthenticatedRequest,
+    @Query() query: ListMyReviewsQueryDto,
+  ) {
+    return this.reviewsService.findMine(request.user, query);
   }
 
   @UseGuards(OptionalJwtAuthGuard)
   @Get('institutions/:institutionId/reviews')
   findByInstitution(
     @Param('institutionId', new ParseUUIDPipe()) institutionId: string,
+    @Query() query: ListInstitutionReviewsQueryDto,
     @Req() request: OptionalAuthenticatedRequest,
   ) {
-    return this.reviewsService.findByInstitution(institutionId, request.user);
+    return this.reviewsService.findByInstitution(institutionId, query, request.user);
   }
 }

@@ -1,39 +1,53 @@
-import { Search } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
-import { toast } from 'sonner';
-import { PiyachokCard } from '@/entities/piyachok/PiyachokCard';
-import { CreatePiyachokForm } from '@/features/piyachok/CreatePiyachokForm';
-import { useAuthStore } from '@/entities/user/model/auth.store';
+import { Search } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { toast } from 'sonner'
+import { PiyachokCard } from '@/entities/piyachok/PiyachokCard'
+import { CreatePiyachokForm } from '@/features/piyachok/CreatePiyachokForm'
+import { useAuthStore } from '@/entities/user/model/auth.store'
 import {
   useDeletePiyachokMutation,
   useGetAllPiyachokQuery,
   useGetMyPiyachokQuery,
-} from '@/shared/api/piyachok.api';
-import { getErrorMessage } from '@/shared/lib/get-error-message';
-import { Button } from '@/shared/ui/button';
-import { Input } from '@/shared/ui/input';
-import { Pagination } from '@/shared/ui/pagination';
+} from '@/shared/api/piyachok.api'
+import { usePiyachokListingParams } from '@/shared/lib/listing-search-params'
+import { useDebouncedValue } from '@/shared/lib/use-debounced-value'
+import { useClampPage } from '@/shared/lib/use-search-param-page'
+import { getErrorMessage } from '@/shared/lib/get-error-message'
+import { Button } from '@/shared/ui/button'
+import { Input } from '@/shared/ui/input'
+import { Pagination } from '@/shared/ui/pagination'
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 10
 
 export function PiyachokPage() {
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const [page, setPage] = useState(1);
-  const [searchInput, setSearchInput] = useState('');
-  const [search, setSearch] = useState('');
-  const [sortBy, setSortBy] = useState<'date' | 'createdAt'>('createdAt');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const [searchParams] = useSearchParams()
+  const urlQ = searchParams.get('q') ?? ''
+
+  const {
+    page,
+    myPage,
+    sortBy,
+    sortOrder,
+    setPage,
+    setMyPage,
+    setSortBy,
+    setSortOrder,
+    setQueryInUrl,
+  } = usePiyachokListingParams()
+
+  const [searchInput, setSearchInput] = useState(() => urlQ)
+
+  const debouncedSearchInput = useDebouncedValue(searchInput)
+  const search = debouncedSearchInput.trim()
 
   useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      setSearch(searchInput.trim());
-    }, 350);
-    return () => window.clearTimeout(timeoutId);
-  }, [searchInput]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [sortBy, sortOrder, search]);
+    if (urlQ === search) {
+      return
+    }
+    setQueryInUrl(debouncedSearchInput)
+  }, [debouncedSearchInput, search, urlQ, setQueryInUrl])
 
   const queryParams = useMemo(
     () => ({
@@ -44,35 +58,44 @@ export function PiyachokPage() {
       ...(search ? { search } : {}),
     }),
     [page, search, sortBy, sortOrder],
-  );
+  )
 
   const {
     data: publicData,
     isLoading: isPublicLoading,
     error: publicError,
     refetch: refetchPublic,
-  } = useGetAllPiyachokQuery(queryParams);
-  const publicFeed = publicData?.items ?? [];
-  const pageCount = publicData?.pageCount ?? 1;
+  } = useGetAllPiyachokQuery(queryParams)
+  const publicFeed = publicData?.items ?? []
+  const pageCount = publicData?.pageCount ?? 1
+
   const {
-    data: myFeed = [],
+    data: myFeedData,
     isLoading: isMyLoading,
     error: myError,
     refetch: refetchMy,
-  } = useGetMyPiyachokQuery(undefined, {
-    skip: !isAuthenticated,
-  });
-  const [deletePiyachok, { isLoading: isDeleting }] =
-    useDeletePiyachokMutation();
+  } = useGetMyPiyachokQuery(
+    { page: myPage, limit: PAGE_SIZE },
+    {
+      skip: !isAuthenticated,
+    },
+  )
+  const myFeed = myFeedData?.items ?? []
+  const myPageCount = myFeedData?.pageCount ?? 1
+
+  useClampPage(page, pageCount, setPage)
+  useClampPage(myPage, myPageCount, setMyPage)
+
+  const [deletePiyachok, { isLoading: isDeleting }] = useDeletePiyachokMutation()
 
   async function handleDelete(id: string) {
     try {
-      await deletePiyachok(id).unwrap();
-      toast.success('Piyachok видалено');
+      await deletePiyachok(id).unwrap()
+      toast.success('Запис видалено')
     } catch (error) {
       toast.error('Помилка видалення', {
         description: getErrorMessage(error, 'Не вдалося видалити запис.'),
-      });
+      })
     }
   }
 
@@ -183,11 +206,7 @@ export function PiyachokPage() {
             {publicFeed.map((item) => (
               <PiyachokCard key={item.id} item={item} />
             ))}
-            <Pagination
-              page={page}
-              pageCount={pageCount}
-              onPageChange={setPage}
-            />
+            <Pagination page={page} pageCount={pageCount} onPageChange={setPage} />
           </div>
         ) : null}
       </section>
@@ -236,20 +255,27 @@ export function PiyachokPage() {
           ) : null}
 
           {!isMyLoading && !myError && myFeed.length > 0 ? (
-            <div className="space-y-4">
-              {myFeed.map((item) => (
-                <PiyachokCard
-                  key={item.id}
-                  item={item}
-                  isOwn
-                  isDeleting={isDeleting}
-                  onDelete={() => void handleDelete(item.id)}
-                />
-              ))}
-            </div>
+            <>
+              <div className="space-y-4">
+                {myFeed.map((item) => (
+                  <PiyachokCard
+                    key={item.id}
+                    item={item}
+                    isOwn
+                    isDeleting={isDeleting}
+                    onDelete={() => void handleDelete(item.id)}
+                  />
+                ))}
+              </div>
+              <Pagination
+                page={myPage}
+                pageCount={myPageCount}
+                onPageChange={setMyPage}
+              />
+            </>
           ) : null}
         </section>
       ) : null}
     </section>
-  );
+  )
 }

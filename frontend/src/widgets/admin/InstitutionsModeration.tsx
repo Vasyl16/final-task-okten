@@ -6,8 +6,17 @@ import {
   useRejectInstitutionMutation,
 } from '@/shared/api/admin.api'
 import { getErrorMessage } from '@/shared/lib/get-error-message'
+import { useClampPage } from '@/shared/lib/use-search-param-page'
 import { Button } from '@/shared/ui/button'
 import { LoadingSpinner } from '@/shared/ui/loading-spinner'
+import { Pagination } from '@/shared/ui/pagination'
+
+const PAGE_SIZE = 12
+
+type InstitutionsModerationProps = {
+  page: number
+  onPageChange: (next: number | ((current: number) => number)) => void
+}
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('uk-UA', {
@@ -17,8 +26,19 @@ function formatDate(value: string) {
   }).format(new Date(value))
 }
 
-export function InstitutionsModeration() {
-  const { data: items = [], isLoading, error, refetch } = useGetPendingInstitutionsQuery()
+export function InstitutionsModeration({
+  page,
+  onPageChange,
+}: InstitutionsModerationProps) {
+  const { data, isLoading, error, refetch } = useGetPendingInstitutionsQuery({
+    page,
+    limit: PAGE_SIZE,
+  })
+  const items = data?.items ?? []
+  const pageCount = data?.pageCount ?? 1
+
+  useClampPage(page, pageCount, onPageChange)
+
   const [approveInstitution, { isLoading: isApproving }] = useApproveInstitutionMutation()
   const [rejectInstitution, { isLoading: isRejecting }] = useRejectInstitutionMutation()
   const [busyId, setBusyId] = useState<string | null>(null)
@@ -92,54 +112,57 @@ export function InstitutionsModeration() {
       ) : null}
 
       {!isLoading && !error && items.length > 0 ? (
-        <div className="space-y-4">
-          {items.map((item) => {
-            const isBusy = busyId === item.id && (isApproving || isRejecting)
+        <>
+          <div className="space-y-4">
+            {items.map((item) => {
+              const isBusy = busyId === item.id && (isApproving || isRejecting)
 
-            return (
-              <article key={item.id} className="rounded-2xl border p-5">
-                <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-                  <div className="space-y-3">
-                    <div className="space-y-1">
-                      <h3 className="text-xl font-semibold">{item.name}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Додано: {formatDate(item.createdAt)}
-                      </p>
+              return (
+                <article key={item.id} className="rounded-2xl border p-5">
+                  <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+                    <div className="space-y-3">
+                      <div className="space-y-1">
+                        <h3 className="text-xl font-semibold">{item.name}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Додано: {formatDate(item.createdAt)}
+                        </p>
+                      </div>
+
+                      <div className="grid gap-2 text-sm text-muted-foreground md:grid-cols-2">
+                        <p>Місто: {item.city?.trim() || 'Немає в поточному API'}</p>
+                        <p>
+                          Власник:{' '}
+                          {item.owner?.name || item.owner?.email || item.ownerId || 'Невідомо'}
+                        </p>
+                      </div>
+
+                      {item.description ? (
+                        <p className="max-w-3xl text-sm text-foreground/80">{item.description}</p>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">Опис не вказано.</p>
+                      )}
                     </div>
 
-                    <div className="grid gap-2 text-sm text-muted-foreground md:grid-cols-2">
-                      <p>Місто: {item.city?.trim() || 'Немає в поточному API'}</p>
-                      <p>
-                        Власник:{' '}
-                        {item.owner?.name || item.owner?.email || item.ownerId || 'Невідомо'}
-                      </p>
+                    <div className="flex min-w-fit items-center gap-2">
+                      {isBusy ? <LoadingSpinner className="text-muted-foreground" /> : null}
+                      <Button disabled={isBusy} onClick={() => void handleApprove(item.id)}>
+                        Схвалити
+                      </Button>
+                      <Button
+                        variant="outline"
+                        disabled={isBusy}
+                        onClick={() => void handleReject(item.id)}
+                      >
+                        Відхилити
+                      </Button>
                     </div>
-
-                    {item.description ? (
-                      <p className="max-w-3xl text-sm text-foreground/80">{item.description}</p>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">Опис не вказано.</p>
-                    )}
                   </div>
-
-                  <div className="flex min-w-fit items-center gap-2">
-                    {isBusy ? <LoadingSpinner className="text-muted-foreground" /> : null}
-                    <Button disabled={isBusy} onClick={() => void handleApprove(item.id)}>
-                      Схвалити
-                    </Button>
-                    <Button
-                      variant="outline"
-                      disabled={isBusy}
-                      onClick={() => void handleReject(item.id)}
-                    >
-                      Відхилити
-                    </Button>
-                  </div>
-                </div>
-              </article>
-            )
-          })}
-        </div>
+                </article>
+              )
+            })}
+          </div>
+          <Pagination page={page} pageCount={pageCount} onPageChange={onPageChange} />
+        </>
       ) : null}
     </section>
   )

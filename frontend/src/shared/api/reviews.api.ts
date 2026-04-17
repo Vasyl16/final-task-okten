@@ -1,5 +1,6 @@
 import type { CreateReviewPayload, Review } from '@/entities/review/types'
 import { baseApi } from '@/shared/api/rtk/base-api'
+import type { PaginatedList } from '@/shared/api/paginated.types'
 
 type BackendReview = {
   id: string
@@ -19,6 +20,14 @@ type BackendReview = {
   createdAt: string
 }
 
+type BackendPaginatedReviews = {
+  items: BackendReview[]
+  total: number
+  page: number
+  limit: number
+  pageCount: number
+}
+
 function normalizeReview(review: BackendReview): Review {
   return {
     id: review.id,
@@ -31,21 +40,58 @@ function normalizeReview(review: BackendReview): Review {
   }
 }
 
+function normalizePaginatedReviews(
+  response: BackendPaginatedReviews,
+): PaginatedList<Review> {
+  return {
+    items: response.items.map((review) => normalizeReview(review)),
+    total: response.total,
+    page: response.page,
+    limit: response.limit,
+    pageCount: response.pageCount,
+  }
+}
+
+export type ReviewsByInstitutionParams = {
+  institutionId: string
+  page?: number
+  limit?: number
+}
+
+export type MyReviewsParams = {
+  page?: number
+  limit?: number
+  institutionId?: string
+}
+
 export const reviewsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getReviewsByInstitution: builder.query<Review[], string>({
-      query: (institutionId) => `/institutions/${institutionId}/reviews`,
-      transformResponse: (response: BackendReview[]): Review[] =>
-        response.map((review) => normalizeReview(review)),
-      providesTags: (_result, _error, institutionId) => [
+    getReviewsByInstitution: builder.query<
+      PaginatedList<Review>,
+      ReviewsByInstitutionParams
+    >({
+      query: ({ institutionId, page = 1, limit = 12 }) => ({
+        url: `/institutions/${institutionId}/reviews`,
+        params: { page, limit },
+      }),
+      transformResponse: (response: BackendPaginatedReviews): PaginatedList<Review> =>
+        normalizePaginatedReviews(response),
+      providesTags: (_result, _error, { institutionId }) => [
         { type: 'ReviewList', id: institutionId },
       ],
     }),
 
-    getMyReviews: builder.query<Review[], void>({
-      query: () => '/reviews/my',
-      transformResponse: (response: BackendReview[]): Review[] =>
-        response.map((review) => normalizeReview(review)),
+    getMyReviews: builder.query<PaginatedList<Review>, MyReviewsParams | void>({
+      query: (args) => ({
+        url: '/reviews/my',
+        params: {
+          page: args?.page ?? 1,
+          limit: args?.limit ?? 12,
+          ...(args?.institutionId ? { institutionId: args.institutionId } : {}),
+        },
+      }),
+      transformResponse: (response: BackendPaginatedReviews): PaginatedList<Review> =>
+        normalizePaginatedReviews(response),
       providesTags: [{ type: 'MyReviews', id: 'LIST' }],
     }),
 

@@ -8,8 +8,17 @@ import {
   useUpdateAdminUserMutation,
 } from '@/shared/api/admin.api'
 import { getErrorMessage } from '@/shared/lib/get-error-message'
+import { useClampPage } from '@/shared/lib/use-search-param-page'
 import { Button } from '@/shared/ui/button'
 import { LoadingSpinner } from '@/shared/ui/loading-spinner'
+import { Pagination } from '@/shared/ui/pagination'
+
+const PAGE_SIZE = 12
+
+type UsersTableProps = {
+  page: number
+  onPageChange: (next: number | ((current: number) => number)) => void
+}
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('uk-UA', {
@@ -19,9 +28,17 @@ function formatDate(value: string) {
   }).format(new Date(value))
 }
 
-export function UsersTable() {
+export function UsersTable({ page, onPageChange }: UsersTableProps) {
   const currentUser = useAuthStore((state) => state.user)
-  const { data: users = [], isLoading, error, refetch } = useGetAdminUsersQuery()
+  const { data, isLoading, error, refetch } = useGetAdminUsersQuery({
+    page,
+    limit: PAGE_SIZE,
+  })
+  const users = data?.items ?? []
+  const pageCount = data?.pageCount ?? 1
+
+  useClampPage(page, pageCount, onPageChange)
+
   const [updateUser, { isLoading: isUpdating }] = useUpdateAdminUserMutation()
   const [deleteUser, { isLoading: isDeleting }] = useDeleteAdminUserMutation()
   const [busyUserId, setBusyUserId] = useState<string | null>(null)
@@ -107,74 +124,77 @@ export function UsersTable() {
       ) : null}
 
       {!isLoading && !error && users.length > 0 ? (
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead className="text-left text-muted-foreground">
-              <tr className="border-b">
-                <th className="px-3 py-3 font-medium">Ім'я</th>
-                <th className="px-3 py-3 font-medium">Email</th>
-                <th className="px-3 py-3 font-medium">Роль</th>
-                <th className="px-3 py-3 font-medium">Критик</th>
-                <th className="px-3 py-3 font-medium">Створено</th>
-                <th className="px-3 py-3 font-medium text-right">Дії</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((user) => {
-                const isCurrentUser = currentUser?.id === user.id
-                const isBusy = busyUserId === user.id && (isUpdating || isDeleting)
+        <>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead className="text-left text-muted-foreground">
+                <tr className="border-b">
+                  <th className="px-3 py-3 font-medium">Ім'я</th>
+                  <th className="px-3 py-3 font-medium">Email</th>
+                  <th className="px-3 py-3 font-medium">Роль</th>
+                  <th className="px-3 py-3 font-medium">Критик</th>
+                  <th className="px-3 py-3 font-medium">Створено</th>
+                  <th className="px-3 py-3 font-medium text-right">Дії</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((user) => {
+                  const isCurrentUser = currentUser?.id === user.id
+                  const isBusy = busyUserId === user.id && (isUpdating || isDeleting)
 
-                return (
-                  <tr key={user.id} className="border-b last:border-0">
-                    <td className="px-3 py-4 font-medium">{user.name}</td>
-                    <td className="px-3 py-4 text-muted-foreground">{user.email}</td>
-                    <td className="px-3 py-4">
-                      <select
-                        className="h-10 rounded-md border bg-background px-3"
-                        value={user.role}
-                        disabled={isBusy}
-                        onChange={(event) =>
-                          void handleRoleChange(user.id, event.target.value as UserRole)
-                        }
-                      >
-                        <option value="USER">USER</option>
-                        <option value="ADMIN">ADMIN</option>
-                      </select>
-                    </td>
-                    <td className="px-3 py-4">
-                      <label className="inline-flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={user.isCritic}
+                  return (
+                    <tr key={user.id} className="border-b last:border-0">
+                      <td className="px-3 py-4 font-medium">{user.name}</td>
+                      <td className="px-3 py-4 text-muted-foreground">{user.email}</td>
+                      <td className="px-3 py-4">
+                        <select
+                          className="h-10 rounded-md border bg-background px-3"
+                          value={user.role}
                           disabled={isBusy}
                           onChange={(event) =>
-                            void handleCriticToggle(user.id, event.target.checked)
+                            void handleRoleChange(user.id, event.target.value as UserRole)
                           }
-                        />
-                        <span>{user.isCritic ? 'Так' : 'Ні'}</span>
-                      </label>
-                    </td>
-                    <td className="px-3 py-4 text-muted-foreground">
-                      {formatDate(user.createdAt)}
-                    </td>
-                    <td className="px-3 py-4">
-                      <div className="flex items-center justify-end gap-2">
-                        {isBusy ? <LoadingSpinner className="text-muted-foreground" /> : null}
-                        <Button
-                          variant="outline"
-                          disabled={isBusy || isCurrentUser}
-                          onClick={() => void handleDelete(user.id)}
                         >
-                          {isCurrentUser ? 'Поточний адмін' : 'Видалити'}
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+                          <option value="USER">USER</option>
+                          <option value="ADMIN">ADMIN</option>
+                        </select>
+                      </td>
+                      <td className="px-3 py-4">
+                        <label className="inline-flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={user.isCritic}
+                            disabled={isBusy}
+                            onChange={(event) =>
+                              void handleCriticToggle(user.id, event.target.checked)
+                            }
+                          />
+                          <span>{user.isCritic ? 'Так' : 'Ні'}</span>
+                        </label>
+                      </td>
+                      <td className="px-3 py-4 text-muted-foreground">
+                        {formatDate(user.createdAt)}
+                      </td>
+                      <td className="px-3 py-4">
+                        <div className="flex items-center justify-end gap-2">
+                          {isBusy ? <LoadingSpinner className="text-muted-foreground" /> : null}
+                          <Button
+                            variant="outline"
+                            disabled={isBusy || isCurrentUser}
+                            onClick={() => void handleDelete(user.id)}
+                          >
+                            {isCurrentUser ? 'Поточний адмін' : 'Видалити'}
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+          <Pagination page={page} pageCount={pageCount} onPageChange={onPageChange} />
+        </>
       ) : null}
     </section>
   )

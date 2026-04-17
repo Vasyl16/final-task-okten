@@ -4,6 +4,7 @@ import type {
   PiyachokDetail,
 } from '@/entities/piyachok/types'
 import { baseApi } from '@/shared/api/rtk/base-api'
+import type { PaginatedList } from '@/shared/api/paginated.types'
 
 type BackendPublicPiyachok = {
   id: string
@@ -54,7 +55,7 @@ type BackendMyPiyachok = {
   createdAt: string
 }
 
-type BackendPaginatedPublic = {
+type BackendPaginated = {
   items: BackendPublicPiyachok[]
   total: number
   page: number
@@ -131,7 +132,7 @@ function mapMyPiyachok(item: BackendMyPiyachok): Piyachok {
   }
 }
 
-function normalizePaginated(response: BackendPaginatedPublic): PaginatedPiyachok {
+function normalizePaginated(response: BackendPaginated): PaginatedPiyachok {
   return {
     items: response.items.map((item) => mapPublicPiyachok(item)),
     total: response.total,
@@ -157,7 +158,7 @@ export const piyachokApi = baseApi.injectEndpoints({
             : {}),
         },
       }),
-      transformResponse: (response: BackendPaginatedPublic): PaginatedPiyachok =>
+      transformResponse: (response: BackendPaginated): PaginatedPiyachok =>
         normalizePaginated(response),
       providesTags: [{ type: 'PiyachokFeed', id: 'LIST' }],
     }),
@@ -169,16 +170,30 @@ export const piyachokApi = baseApi.injectEndpoints({
       providesTags: (_result, _error, id) => [{ type: 'Piyachok', id }],
     }),
 
-    getMyPiyachok: builder.query<Piyachok[], void>({
-      query: () => '/piyachok/my',
-      transformResponse: (response: BackendMyPiyachok[]): Piyachok[] =>
-        [...response]
-          .map((item) => mapMyPiyachok(item))
-          .sort(
-            (first, second) =>
-              new Date(second.createdAt).getTime() -
-              new Date(first.createdAt).getTime(),
-          ),
+    getMyPiyachok: builder.query<
+      PaginatedList<Piyachok>,
+      { page?: number; limit?: number } | void
+    >({
+      query: (params) => ({
+        url: '/piyachok/my',
+        params: {
+          page: params?.page ?? 1,
+          limit: params?.limit ?? 12,
+        },
+      }),
+      transformResponse: (response: {
+        items: BackendMyPiyachok[]
+        total: number
+        page: number
+        limit: number
+        pageCount: number
+      }): PaginatedList<Piyachok> => ({
+        items: response.items.map((item) => mapMyPiyachok(item)),
+        total: response.total,
+        page: response.page,
+        limit: response.limit,
+        pageCount: response.pageCount,
+      }),
       providesTags: [{ type: 'PiyachokMine', id: 'LIST' }],
     }),
 

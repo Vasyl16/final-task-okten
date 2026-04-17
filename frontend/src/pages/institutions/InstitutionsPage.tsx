@@ -3,8 +3,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { InstitutionCard } from '@/entities/institution/InstitutionCard'
 import { useAuthStore } from '@/entities/user/model/auth.store'
 import type { InstitutionListParams } from '@/entities/institution/types'
-import { useGetFavoritesQuery } from '@/shared/api/favorites/get-favorites.query'
+import { useGetFavoriteInstitutionIdsQuery } from '@/shared/api/favorites/get-favorites.query'
 import { useGetInstitutionsQuery } from '@/shared/api/institutions/get-all.query'
+import { useInstitutionsListingParams } from '@/shared/lib/listing-search-params'
+import { useDebouncedValue } from '@/shared/lib/use-debounced-value'
+import { useClampPage } from '@/shared/lib/use-search-param-page'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Pagination } from '@/shared/ui/pagination'
@@ -13,42 +16,60 @@ const PAGE_SIZE = 12
 
 export function InstitutionsPage() {
   const user = useAuthStore((state) => state.user)
-  const [search, setSearch] = useState('')
-  const [city, setCity] = useState('')
-  const [sort, setSort] = useState<InstitutionListParams['sort']>('rating')
-  const [page, setPage] = useState(1)
+  const { search, city, sort, page, setPage, setSearch, setCity, setSort } =
+    useInstitutionsListingParams()
+
+  const [searchInput, setSearchInput] = useState(search)
+  const [cityInput, setCityInput] = useState(city)
 
   useEffect(() => {
-    setPage(1)
-  }, [search, city, sort])
+    setSearchInput(search)
+  }, [search])
+
+  useEffect(() => {
+    setCityInput(city)
+  }, [city])
+
+  const debouncedSearch = useDebouncedValue(searchInput)
+  const debouncedCity = useDebouncedValue(cityInput)
+
+  useEffect(() => {
+    if (debouncedSearch.trim() === search.trim()) {
+      return
+    }
+    setSearch(debouncedSearch)
+  }, [debouncedSearch, search, setSearch])
+
+  useEffect(() => {
+    if (debouncedCity.trim() === city.trim()) {
+      return
+    }
+    setCity(debouncedCity)
+  }, [city, debouncedCity, setCity])
 
   const requestParams = useMemo(
     () => ({
       search,
       city,
-      sort,
+      sort: sort as InstitutionListParams['sort'],
       page,
       limit: PAGE_SIZE,
     }),
     [city, page, search, sort],
   )
 
-  const {
-    data,
-    isLoading,
-    isFetching,
-    error,
-    refetch,
-  } = useGetInstitutionsQuery(requestParams)
-  const { data: favorites = [] } = useGetFavoritesQuery()
+  const { data, isLoading, isFetching, error, refetch } =
+    useGetInstitutionsQuery(requestParams)
+  const { data: favoriteIdsList = [] } = useGetFavoriteInstitutionIdsQuery(undefined, {
+    skip: !user,
+  })
 
   const institutions = data?.items ?? []
   const pageCount = data?.pageCount ?? 1
 
-  const favoriteIds = useMemo(
-    () => new Set(favorites.map((institution) => institution.id)),
-    [favorites],
-  )
+  useClampPage(page, pageCount, setPage)
+
+  const favoriteIds = useMemo(() => new Set(favoriteIdsList), [favoriteIdsList])
 
   const institutionsWithFavorites = useMemo(
     () =>
@@ -88,19 +109,23 @@ export function InstitutionsPage() {
       <div className="grid gap-3 rounded-2xl border bg-card p-4 md:grid-cols-3">
         <Input
           placeholder="Пошук за назвою"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
+          value={searchInput}
+          onChange={(event) => setSearchInput(event.target.value)}
+          type="search"
+          autoComplete="off"
         />
         <Input
           placeholder="Місто"
-          value={city}
-          onChange={(event) => setCity(event.target.value)}
+          value={cityInput}
+          onChange={(event) => setCityInput(event.target.value)}
+          type="search"
+          autoComplete="off"
         />
         <select
           className="flex h-10 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring"
           value={sort}
           onChange={(event) =>
-            setSort(event.target.value as InstitutionListParams['sort'])
+            setSort(event.target.value as 'rating' | 'views')
           }
         >
           <option value="rating">Сортувати за рейтингом</option>

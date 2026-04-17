@@ -20,6 +20,7 @@ import { Request } from 'express';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { AuthenticatedUser } from '../auth/jwt.strategy';
 import { CreateInstitutionDto } from './dto/create-institution.dto';
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { ListInstitutionsQueryDto } from './dto/list-institutions-query.dto';
 import { UpdateInstitutionDto } from './dto/update-institution.dto';
 import { InstitutionsService } from './institutions.service';
@@ -59,8 +60,11 @@ export class InstitutionsController {
 
   @UseGuards(JwtAuthGuard)
   @Get('mine')
-  findMine(@Req() request: AuthenticatedRequest) {
-    return this.institutionsService.findMine(request.user);
+  findMine(
+    @Query() query: PaginationQueryDto,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.institutionsService.findMine(request.user, query);
   }
 
   @UseGuards(OptionalJwtAuthGuard)

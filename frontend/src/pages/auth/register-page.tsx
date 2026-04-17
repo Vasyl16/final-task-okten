@@ -16,6 +16,7 @@ export function RegisterPage() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [passwordConfirm, setPasswordConfirm] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -31,8 +32,31 @@ export function RegisterPage() {
       return
     }
 
+    if (password.length < 8) {
+      const message = 'Пароль має містити щонайменше 8 символів.'
+      setError(message)
+      toast.error('Помилка реєстрації', {
+        description: message,
+      })
+      return
+    }
+
+    if (password !== passwordConfirm) {
+      const message = 'Паролі не збігаються. Повторіть пароль у другому полі.'
+      setError(message)
+      toast.error('Помилка реєстрації', {
+        description: message,
+      })
+      return
+    }
+
     try {
-      await register({ name: trimmedName, email, password })
+      await register({
+        name: trimmedName,
+        email,
+        password,
+        passwordConfirm,
+      })
       toast.success('Реєстрація успішна', {
         description: 'Акаунт створено, ви вже авторизовані.',
       })
@@ -100,9 +124,26 @@ export function RegisterPage() {
               id="password"
               type="password"
               autoComplete="new-password"
-              placeholder="Створіть пароль"
+              placeholder="Щонайменше 8 символів"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
+              minLength={8}
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium" htmlFor="passwordConfirm">
+              Повторіть пароль
+            </label>
+            <Input
+              id="passwordConfirm"
+              type="password"
+              autoComplete="new-password"
+              placeholder="Введіть пароль ще раз"
+              value={passwordConfirm}
+              onChange={(event) => setPasswordConfirm(event.target.value)}
+              minLength={8}
               required
             />
           </div>

@@ -32,8 +32,9 @@ function usePreview(file: File | null) {
 
 export function CreateNewsPage() {
   const navigate = useNavigate()
-  const { data: institutions = [], isLoading: isInstitutionsLoading } =
-    useGetMyInstitutionsQuery()
+  const { data: institutionsData, isLoading: isInstitutionsLoading } =
+    useGetMyInstitutionsQuery({ page: 1, limit: 50 })
+  const institutions = institutionsData?.items ?? []
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [category, setCategory] =

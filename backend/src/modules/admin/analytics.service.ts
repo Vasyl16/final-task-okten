@@ -1,4 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import { resolvePageCount, resolvePagination } from '../../common/pagination';
 import { PrismaService } from '../../prisma/prisma.service';
 
 export interface InstitutionAnalyticsItem {
@@ -46,28 +48,52 @@ export class AnalyticsService {
     return { success: true };
   }
 
-  async getInstitutionAnalytics(): Promise<InstitutionAnalyticsItem[]> {
-    const institutions = await this.prismaService.institution.findMany({
-      select: {
-        id: true,
-        name: true,
-        viewsCount: true,
-      },
-      orderBy: {
-        viewsCount: 'desc',
-      },
-    });
+  async getInstitutionAnalytics(query: PaginationQueryDto): Promise<{
+    items: InstitutionAnalyticsItem[];
+    total: number;
+    page: number;
+    limit: number;
+    pageCount: number;
+  }> {
+    const { page, limit, skip } = resolvePagination(query, 12);
 
-    return institutions.map((institution) => ({
+    const [total, institutions] = await Promise.all([
+      this.prismaService.institution.count(),
+      this.prismaService.institution.findMany({
+        select: {
+          id: true,
+          name: true,
+          viewsCount: true,
+        },
+        orderBy: {
+          viewsCount: 'desc',
+        },
+        skip,
+        take: limit,
+      }),
+    ]);
+
+    const pageCount = resolvePageCount(total, limit);
+
+    const items = institutions.map((institution) => ({
       institutionId: institution.id,
       name: institution.name,
       viewsCount: institution.viewsCount,
     }));
+
+    return { items, total, page, limit, pageCount };
   }
 
   async getInstitutionAnalyticsById(
     institutionId: string,
-  ): Promise<InstitutionViewsByDateItem[]> {
+    query: PaginationQueryDto,
+  ): Promise<{
+    items: InstitutionViewsByDateItem[];
+    total: number;
+    page: number;
+    limit: number;
+    pageCount: number;
+  }> {
     const institution = await this.prismaService.institution.findUnique({
       where: { id: institutionId },
       select: { id: true },
@@ -98,9 +124,18 @@ export class AnalyticsService {
       return accumulator;
     }, new Map<string, number>());
 
-    return Array.from(groupedViews.entries()).map(([date, viewsCount]) => ({
-      date,
-      viewsCount,
-    }));
+    const sortedDesc = Array.from(groupedViews.entries())
+      .map(([date, viewsCount]) => ({
+        date,
+        viewsCount,
+      }))
+      .sort((first, second) => second.date.localeCompare(first.date));
+
+    const { page, limit, skip } = resolvePagination(query, 12);
+    const total = sortedDesc.length;
+    const items = sortedDesc.slice(skip, skip + limit);
+    const pageCount = resolvePageCount(total, limit);
+
+    return { items, total, page, limit, pageCount };
   }
 }

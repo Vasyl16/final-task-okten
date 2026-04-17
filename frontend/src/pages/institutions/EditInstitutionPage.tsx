@@ -5,7 +5,11 @@ import { useGetMyInstitutionsQuery } from '@/shared/api/institutions/get-mine.qu
 export function EditInstitutionPage() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
-  const { data: myInstitutions = [], isLoading } = useGetMyInstitutionsQuery()
+  const { data: myInstitutionsData, isLoading } = useGetMyInstitutionsQuery({
+    page: 1,
+    limit: 50,
+  })
+  const myInstitutions = myInstitutionsData?.items ?? []
 
   const institution = myInstitutions.find((item) => item.id === id)
 

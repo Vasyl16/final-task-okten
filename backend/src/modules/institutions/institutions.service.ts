@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { resolvePageCount, resolvePagination } from '../../common/pagination';
 import {
   Institution,
   InstitutionStatus,
@@ -15,6 +16,7 @@ import { AnalyticsService } from '../admin/analytics.service';
 import { AuthenticatedUser } from '../auth/jwt.strategy';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateInstitutionDto } from './dto/create-institution.dto';
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { ListInstitutionsQueryDto } from './dto/list-institutions-query.dto';
 import { UpdateInstitutionDto } from './dto/update-institution.dto';
 
@@ -221,15 +223,36 @@ export class InstitutionsService {
     throw new ForbiddenException('You do not have access to this institution');
   }
 
-  async findMine(currentUser: AuthenticatedUser): Promise<Institution[]> {
-    return this.prismaService.institution.findMany({
-      where: {
-        ownerId: currentUser.id,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+  async findMine(
+    currentUser: AuthenticatedUser,
+    query: PaginationQueryDto,
+  ): Promise<{
+    items: Institution[];
+    total: number;
+    page: number;
+    limit: number;
+    pageCount: number;
+  }> {
+    const { page, limit, skip } = resolvePagination(query, 12);
+    const where = {
+      ownerId: currentUser.id,
+    };
+
+    const [total, items] = await Promise.all([
+      this.prismaService.institution.count({ where }),
+      this.prismaService.institution.findMany({
+        where,
+        orderBy: {
+          createdAt: 'desc',
+        },
+        skip,
+        take: limit,
+      }),
+    ]);
+
+    const pageCount = resolvePageCount(total, limit);
+
+    return { items, total, page, limit, pageCount };
   }
 
   async update(
@@ -308,15 +331,41 @@ export class InstitutionsService {
     });
   }
 
-  async findPending(): Promise<Institution[]> {
-    return this.prismaService.institution.findMany({
-      where: {
-        status: InstitutionStatus.PENDING,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+  async findPending(query: PaginationQueryDto): Promise<{
+    items: Institution[];
+    total: number;
+    page: number;
+    limit: number;
+    pageCount: number;
+  }> {
+    const { page, limit, skip } = resolvePagination(query, 12);
+    const where = {
+      status: InstitutionStatus.PENDING,
+    };
+
+    const [total, items] = await Promise.all([
+      this.prismaService.institution.count({ where }),
+      this.prismaService.institution.findMany({
+        where,
+        orderBy: {
+          createdAt: 'desc',
+        },
+        include: {
+          owner: {
+            select: {
+              name: true,
+              email: true,
+            },
+          },
+        },
+        skip,
+        take: limit,
+      }),
+    ]);
+
+    const pageCount = resolvePageCount(total, limit);
+
+    return { items, total, page, limit, pageCount };
   }
 
   async trackView(id: string): Promise<{ success: true }> {

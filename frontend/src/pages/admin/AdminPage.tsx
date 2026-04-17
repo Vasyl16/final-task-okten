@@ -1,24 +1,38 @@
-import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuthStore } from '@/entities/user/model/auth.store'
+import {
+  type AdminTab,
+  useAdminListingParams,
+} from '@/shared/lib/listing-search-params'
+import { cn } from '@/shared/lib/utils'
 import { AnalyticsDashboard } from '@/widgets/admin/AnalyticsDashboard'
 import { InstitutionsModeration } from '@/widgets/admin/InstitutionsModeration'
 import { TopCategoriesManager } from '@/widgets/admin/TopCategoriesManager'
 import { UsersTable } from '@/widgets/admin/UsersTable'
-import { cn } from '@/shared/lib/utils'
 
-const tabs = [
+const tabs: { id: AdminTab; label: string }[] = [
   { id: 'users', label: 'Користувачі' },
   { id: 'institutions', label: 'Модерація закладів' },
   { id: 'topCategories', label: 'Топ-категорії' },
   { id: 'analytics', label: 'Аналітика' },
-] as const
-
-type AdminTab = (typeof tabs)[number]['id']
+]
 
 export function AdminPage() {
   const user = useAuthStore((state) => state.user)
-  const [activeTab, setActiveTab] = useState<AdminTab>('users')
+  const {
+    tab: activeTab,
+    setTab: setActiveTab,
+    usersPage,
+    setUsersPage,
+    modPage,
+    setModPage,
+    analyticsListPage,
+    setAnalyticsListPage,
+    analyticsDetailPage,
+    setAnalyticsDetailPage,
+    analyticsInstitutionId,
+    setAnalyticsInstitutionId,
+  } = useAdminListingParams()
 
   if (!user) {
     return null
@@ -55,10 +69,23 @@ export function AdminPage() {
         ))}
       </div>
 
-      {activeTab === 'users' ? <UsersTable /> : null}
-      {activeTab === 'institutions' ? <InstitutionsModeration /> : null}
+      {activeTab === 'users' ? (
+        <UsersTable page={usersPage} onPageChange={setUsersPage} />
+      ) : null}
+      {activeTab === 'institutions' ? (
+        <InstitutionsModeration page={modPage} onPageChange={setModPage} />
+      ) : null}
       {activeTab === 'topCategories' ? <TopCategoriesManager /> : null}
-      {activeTab === 'analytics' ? <AnalyticsDashboard /> : null}
+      {activeTab === 'analytics' ? (
+        <AnalyticsDashboard
+          listPage={analyticsListPage}
+          onListPageChange={setAnalyticsListPage}
+          detailPage={analyticsDetailPage}
+          onDetailPageChange={setAnalyticsDetailPage}
+          selectedInstitutionId={analyticsInstitutionId}
+          onSelectedInstitutionIdChange={setAnalyticsInstitutionId}
+        />
+      ) : null}
     </section>
   )
 }
