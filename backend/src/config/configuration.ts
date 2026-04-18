@@ -1,8 +1,21 @@
+function stripOptionalQuotes(value: string): string {
+  const trimmed = value.trim()
+
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1)
+  }
+
+  return trimmed
+}
+
 export default () => ({
   app: {
     nodeEnv: process.env.NODE_ENV ?? 'development',
     port: Number.parseInt(process.env.PORT ?? '3000', 10),
-    frontendOrigin: process.env.FRONTEND_ORIGIN ?? 'http://localhost:5173',
+    frontendOrigin: stripOptionalQuotes(process.env.FRONTEND_ORIGIN ?? 'http://localhost:5173'),
   },
   aws: {
     bucketName: process.env.AWS_BUCKET_NAME ?? '',
@@ -22,5 +35,9 @@ export default () => ({
   },
   google: {
     clientId: process.env.GOOGLE_CLIENT_ID ?? '',
+  },
+  email: {
+    from: stripOptionalQuotes(process.env.SMTP_EMAIL ?? ''),
+    password: stripOptionalQuotes(process.env.SMTP_PASSWORD ?? ''),
   },
 });

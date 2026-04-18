@@ -35,6 +35,8 @@ model User {
   googleId     String?       @unique
   password     String
   refreshToken String?
+  passwordResetToken   String?   @unique
+  passwordResetExpires DateTime?
   role         UserRole      @default(USER)
   isCritic     Boolean       @default(false)
   createdAt    DateTime      @default(now())

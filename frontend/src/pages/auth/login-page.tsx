@@ -84,6 +84,14 @@ export function LoginPage() {
               onChange={(event) => setPassword(event.target.value)}
               required
             />
+            <p className="text-right text-sm">
+              <Link
+                className="font-medium text-muted-foreground hover:text-foreground hover:underline"
+                to="/forgot-password"
+              >
+                Забули пароль?
+              </Link>
+            </p>
           </div>
 
           <div aria-live="polite" className="min-h-11">

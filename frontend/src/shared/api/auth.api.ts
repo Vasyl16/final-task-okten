@@ -20,6 +20,12 @@ export type GoogleAuthPayload = {
   credential: string
 }
 
+export type ResetPasswordPayload = {
+  token: string
+  password: string
+  passwordConfirm: string
+}
+
 type AuthResponse = AuthTokens & {
   user?: User
 }
@@ -80,6 +86,20 @@ export const authApi = {
     const { data } = await api.post<AuthResponse>('/auth/google', {
       credential: payload.credential,
     })
+
+    return data
+  },
+
+  async forgotPassword(email: string) {
+    const { data } = await api.post<{ message: string }>('/auth/forgot-password', {
+      email,
+    })
+
+    return data
+  },
+
+  async resetPassword(payload: ResetPasswordPayload) {
+    const { data } = await api.post<{ message: string }>('/auth/reset-password', payload)
 
     return data
   },

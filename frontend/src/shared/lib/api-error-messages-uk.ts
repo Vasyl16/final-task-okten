@@ -6,6 +6,7 @@ const FIELD_UK: Record<string, string> = {
   name: "Ім'я",
   email: 'Email',
   credential: 'Облікові дані Google',
+  token: 'Посилання скидання',
   title: 'Заголовок',
   description: 'Опис',
   message: 'Повідомлення',
@@ -77,6 +78,15 @@ const EXACT: Record<string, string> = {
     'Видалити запит може лише автор.',
 
   'Top category not found': 'Категорію не знайдено.',
+
+  'Password reset email is not configured':
+    'Скидання пароля не налаштовано на сервері (SMTP). Зверніться до адміністратора.',
+  'Failed to send reset email':
+    'Не вдалося надіслати лист. Спробуйте пізніше або перевірте налаштування пошти.',
+  'Invalid or expired reset link':
+    'Посилання недійсне або прострочене. Запросіть нове скидання пароля.',
+  'Password has been reset. You can sign in now.':
+    'Пароль оновлено. Тепер можете увійти з новим паролем.',
 }
 
 function translateValidationSegment(segment: string): string | null {

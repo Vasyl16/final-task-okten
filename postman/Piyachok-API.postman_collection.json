@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Piyachok API",
-    "description": "NestJS backend for Піячок final-task. Run Auth → Login to set accessToken and refreshToken.",
+    "description": "NestJS backend for Піячок final-task.\n\n## Setup\n1. Import **Piyachok-API.postman_collection.json** and **Piyachok-API.postman_environment.json**.\n2. Select environment **Piyachok API — Local** (or duplicate for prod).\n3. Edit environment (or collection) variables: **demoEmail**, **demoPassword** — real user credentials.\n4. Run **Auth → Login** (or **Register**) — test scripts save **accessToken** and **refreshToken**.\n5. **Forgot / Reset password:** run **Forgot password** (needs SMTP in backend `.env`). Open the email, copy the `token` query param from the link into variable **passwordResetToken**, set **demoPasswordNew**, then run **Reset password**. Update **demoPassword** to match if you want Login to keep working.\n6. Run **Institutions → List** to auto-fill **institutionId** from the first item (test script).\n\nMultipart: Institutions Create/Update and News Create use **Body → form-data**.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -40,6 +40,22 @@
     {
       "key": "categoryId",
       "value": ""
+    },
+    {
+      "key": "demoEmail",
+      "value": "demo@example.com"
+    },
+    {
+      "key": "demoPassword",
+      "value": "Password123!"
+    },
+    {
+      "key": "demoPasswordNew",
+      "value": "Password123!Reset"
+    },
+    {
+      "key": "passwordResetToken",
+      "value": ""
     }
   ],
   "item": [
@@ -50,26 +66,17 @@
           "name": "Register",
           "request": {
             "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
             "url": "{{baseUrl}}/auth/register",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Demo User\",\n  \"email\": \"demo@example.com\",\n  \"password\": \"Password123!\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "Login",
-          "request": {
-            "method": "POST",
-            "url": "{{baseUrl}}/auth/login",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"demo@example.com\",\n  \"password\": \"Password123!\"\n}",
+              "raw": "{\n  \"name\": \"Demo User\",\n  \"email\": \"{{demoEmail}}\",\n  \"password\": \"{{demoPassword}}\",\n  \"passwordConfirm\": \"{{demoPassword}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -94,9 +101,136 @@
           ]
         },
         {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{demoEmail}}\",\n  \"password\": \"{{demoPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {",
+                  "  const j = pm.response.json();",
+                  "  if (j.accessToken) pm.collectionVariables.set('accessToken', j.accessToken);",
+                  "  if (j.refreshToken) pm.collectionVariables.set('refreshToken', j.refreshToken);",
+                  "} catch (e) {}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Forgot password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/forgot-password",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{demoEmail}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Forgot password responds', () => {",
+                  "  pm.expect([200, 400, 500].includes(pm.response.code)).to.be.true;",
+                  "});",
+                  "try {",
+                  "  const j = pm.response.json();",
+                  "  if (j.message) { console.log('API message:', j.message); }",
+                  "  console.log('If SMTP is configured: open the email, copy the `token` value from the reset link (?token=...) into collection variable `passwordResetToken`, set `demoPasswordNew`, then run Reset password.');",
+                  "} catch (e) {}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reset password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/reset-password",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{passwordResetToken}}\",\n  \"password\": \"{{demoPasswordNew}}\",\n  \"passwordConfirm\": \"{{demoPasswordNew}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  try {",
+                  "    const j = pm.response.json();",
+                  "    if (j.message) console.log(j.message);",
+                  "  } catch (e) {}",
+                  "  pm.collectionVariables.set('passwordResetToken', '');",
+                  "  console.log('Optional: set demoPassword to the same value as demoPasswordNew so Login still works.');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
           "name": "Google (credential)",
           "request": {
             "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
             "url": "{{baseUrl}}/auth/google",
             "body": {
               "mode": "raw",
@@ -107,12 +241,34 @@
                 }
               }
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {",
+                  "  const j = pm.response.json();",
+                  "  if (j.accessToken) pm.collectionVariables.set('accessToken', j.accessToken);",
+                  "  if (j.refreshToken) pm.collectionVariables.set('refreshToken', j.refreshToken);",
+                  "} catch (e) {}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "Refresh token",
           "request": {
             "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
             "url": "{{baseUrl}}/auth/refresh",
             "body": {
               "mode": "raw",
@@ -123,7 +279,22 @@
                 }
               }
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {",
+                  "  const j = pm.response.json();",
+                  "  if (j.accessToken) pm.collectionVariables.set('accessToken', j.accessToken);",
+                  "  if (j.refreshToken) pm.collectionVariables.set('refreshToken', j.refreshToken);",
+                  "} catch (e) {}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "Logout",
@@ -191,7 +362,24 @@
           "request": {
             "method": "GET",
             "url": "{{baseUrl}}/institutions?page=1&limit=12&sort=rating"
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {",
+                  "  const j = pm.response.json();",
+                  "  if (j.items && j.items.length > 0 && j.items[0].id) {",
+                  "    pm.collectionVariables.set('institutionId', j.items[0].id);",
+                  "    console.log('Set institutionId to', j.items[0].id);",
+                  "  }",
+                  "} catch (e) {}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "Mine",
@@ -436,8 +624,25 @@
           "name": "By institution",
           "request": {
             "method": "GET",
-            "url": "{{baseUrl}}/institutions/{{institutionId}}/reviews"
-          }
+            "url": "{{baseUrl}}/institutions/{{institutionId}}/reviews?page=1&limit=12"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {",
+                  "  const j = pm.response.json();",
+                  "  if (j.items && j.items.length > 0 && j.items[0].id) {",
+                  "    pm.collectionVariables.set('reviewId', j.items[0].id);",
+                  "    console.log('Set reviewId to', j.items[0].id);",
+                  "  }",
+                  "} catch (e) {}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         }
       ]
     },
@@ -496,7 +701,24 @@
           "request": {
             "method": "GET",
             "url": "{{baseUrl}}/news?page=1&limit=12"
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {",
+                  "  const j = pm.response.json();",
+                  "  if (j.items && j.items.length > 0 && j.items[0].id) {",
+                  "    pm.collectionVariables.set('newsId', j.items[0].id);",
+                  "    console.log('Set newsId to', j.items[0].id);",
+                  "  }",
+                  "} catch (e) {}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "Get by id",
@@ -587,7 +809,24 @@
               }
             ],
             "url": "{{baseUrl}}/piyachok?page=1&limit=12"
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {",
+                  "  const j = pm.response.json();",
+                  "  if (j.items && j.items.length > 0 && j.items[0].id) {",
+                  "    pm.collectionVariables.set('piyachokId', j.items[0].id);",
+                  "    console.log('Set piyachokId to', j.items[0].id);",
+                  "  }",
+                  "} catch (e) {}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "Mine",
@@ -752,8 +991,25 @@
                 "type": "text"
               }
             ],
-            "url": "{{baseUrl}}/admin/users"
-          }
+            "url": "{{baseUrl}}/admin/users?page=1&limit=12"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {",
+                  "  const j = pm.response.json();",
+                  "  if (j.items && j.items.length > 0 && j.items[0].id) {",
+                  "    pm.collectionVariables.set('userId', j.items[0].id);",
+                  "    console.log('Set userId to', j.items[0].id);",
+                  "  }",
+                  "} catch (e) {}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "Update user",
@@ -803,8 +1059,25 @@
                 "type": "text"
               }
             ],
-            "url": "{{baseUrl}}/admin/top-categories"
-          }
+            "url": "{{baseUrl}}/admin/top-categories?page=1&limit=100"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "try {",
+                  "  const j = pm.response.json();",
+                  "  if (j.items && j.items.length > 0 && j.items[0].id) {",
+                  "    pm.collectionVariables.set('categoryId', j.items[0].id);",
+                  "    console.log('Set categoryId to', j.items[0].id);",
+                  "  }",
+                  "} catch (e) {}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "Create top category",

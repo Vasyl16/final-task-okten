@@ -87,14 +87,14 @@ nginx serves the SPA and proxies `/api` to Nest on port 3000 inside the containe
 
 ## API documentation (Postman)
 
-Import **Postman Collection v2.1**:
+Import **Postman Collection v2.1** and the **environment** (so variables, bodies, and test scripts are complete out of the box):
 
-- File: [`postman/Piyachok-API.postman_collection.json`](./postman/Piyachok-API.postman_collection.json)
+- Collection: [`postman/Piyachok-API.postman_collection.json`](./postman/Piyachok-API.postman_collection.json)
+- Environment: [`postman/Piyachok-API.postman_environment.json`](./postman/Piyachok-API.postman_environment.json)
 
-Collection variables:
+Select environment **Piyachok API — Local**, then adjust `demoEmail` / `demoPassword` for your user. **Auth → Login** / **Register** / **Refresh** / **Google** test scripts save `accessToken` and `refreshToken`. **Forgot password** / **Reset password** are under **Auth** (reset flow needs SMTP on the server and `passwordResetToken` pasted from the email — see [`postman/README.md`](./postman/README.md)).
 
-- `baseUrl` — default `http://localhost:3000`
-- `accessToken` / `refreshToken` — filled automatically after **Auth → Login** (collection test script)
+List endpoints include **Tests** that set `institutionId`, `reviewId`, `newsId`, `piyachokId`, `userId`, or `categoryId` from the first item when present.
 
 Protected routes expect header: `Authorization: Bearer {{accessToken}}`.
 
