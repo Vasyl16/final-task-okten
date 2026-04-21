@@ -35,9 +35,10 @@ export function InstitutionsModeration({
     limit: PAGE_SIZE,
   })
   const items = data?.items ?? []
-  const pageCount = data?.pageCount ?? 1
+  const resolvedPageCount = data?.pageCount
+  const pageCount = resolvedPageCount ?? 1
 
-  useClampPage(page, pageCount, onPageChange)
+  useClampPage(page, resolvedPageCount, onPageChange)
 
   const [approveInstitution, { isLoading: isApproving }] = useApproveInstitutionMutation()
   const [rejectInstitution, { isLoading: isRejecting }] = useRejectInstitutionMutation()

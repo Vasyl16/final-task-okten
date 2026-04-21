@@ -40,26 +40,22 @@ export function AnalyticsDashboard({
     limit: PAGE_SIZE,
   })
   const institutions = analyticsData?.items ?? []
-  const listPageCount = analyticsData?.pageCount ?? 1
+  const resolvedListPageCount = analyticsData?.pageCount
+  const listPageCount = resolvedListPageCount ?? 1
 
-  useClampPage(listPage, listPageCount, onListPageChange)
+  useClampPage(listPage, resolvedListPageCount, onListPageChange)
 
   useEffect(() => {
     if (institutions.length === 0) {
       return
     }
 
-    const stillOnPage = institutions.some(
-      (item) => item.institutionId === selectedInstitutionId,
-    )
-
-    if (!selectedInstitutionId || !stillOnPage) {
+    if (!selectedInstitutionId) {
       onSelectedInstitutionIdChange(institutions[0].institutionId)
     }
   }, [
     institutions,
     selectedInstitutionId,
-    listPage,
     onSelectedInstitutionIdChange,
   ])
 
@@ -79,9 +75,15 @@ export function AnalyticsDashboard({
   )
 
   const viewsByDay = detailData?.items ?? []
-  const detailPageCount = detailData?.pageCount ?? 1
+  const resolvedDetailPageCount = detailData?.pageCount
+  const detailPageCount = resolvedDetailPageCount ?? 1
 
-  useClampPage(detailPage, detailPageCount, onDetailPageChange, Boolean(selectedInstitutionId))
+  useClampPage(
+    detailPage,
+    resolvedDetailPageCount,
+    onDetailPageChange,
+    Boolean(selectedInstitutionId),
+  )
 
   const maxViews = useMemo(() => {
     return viewsByDay.reduce((currentMax, item) => Math.max(currentMax, item.viewsCount), 0)

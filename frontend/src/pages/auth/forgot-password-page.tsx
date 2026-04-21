@@ -2,6 +2,11 @@ import { type FormEvent, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { authApi } from '@/shared/api/auth.api'
+import {
+  INVALID_EMAIL_MESSAGE,
+  isValidEmail,
+  normalizeEmail,
+} from '@/shared/lib/email'
 import { getErrorMessage } from '@/shared/lib/get-error-message'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
@@ -13,10 +18,19 @@ export function ForgotPasswordPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    const normalizedEmail = normalizeEmail(email)
+
+    if (!isValidEmail(normalizedEmail)) {
+      toast.error('Некоректний email', {
+        description: INVALID_EMAIL_MESSAGE,
+      })
+      return
+    }
+
     setIsSubmitting(true)
 
     try {
-      await authApi.forgotPassword(email.trim().toLowerCase())
+      await authApi.forgotPassword(normalizedEmail)
       toast.success('Перевірте пошту', {
         description:
           'Якщо обліковий запис з таким email існує, ми надіслали посилання для нового пароля.',
@@ -57,6 +71,8 @@ export function ForgotPasswordPage() {
               placeholder="you@example.com"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
+              pattern="^[^\s@]+@[^\s@]+\.[^\s@]+$"
+              title={INVALID_EMAIL_MESSAGE}
               required
             />
           </div>

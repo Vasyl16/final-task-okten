@@ -58,10 +58,11 @@ export function InstitutionDetailsPage() {
   )
 
   const reviews = reviewsData?.items ?? []
-  const reviewsPageCount = reviewsData?.pageCount ?? 1
+  const resolvedReviewsPageCount = reviewsData?.pageCount
+  const reviewsPageCount = resolvedReviewsPageCount ?? 1
   const hasOwnReview = (myReviewProbe?.total ?? 0) > 0
 
-  useClampPage(reviewsPage, reviewsPageCount, setReviewsPage)
+  useClampPage(reviewsPage, resolvedReviewsPageCount, setReviewsPage)
 
   const [trackView] = useTrackInstitutionViewMutation()
 

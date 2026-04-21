@@ -35,9 +35,10 @@ export function UsersTable({ page, onPageChange }: UsersTableProps) {
     limit: PAGE_SIZE,
   })
   const users = data?.items ?? []
-  const pageCount = data?.pageCount ?? 1
+  const resolvedPageCount = data?.pageCount
+  const pageCount = resolvedPageCount ?? 1
 
-  useClampPage(page, pageCount, onPageChange)
+  useClampPage(page, resolvedPageCount, onPageChange)
 
   const [updateUser, { isLoading: isUpdating }] = useUpdateAdminUserMutation()
   const [deleteUser, { isLoading: isDeleting }] = useDeleteAdminUserMutation()

@@ -3,6 +3,11 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/entities/user/model/auth.store'
 import { GoogleSignInButton } from '@/features/auth/GoogleSignInButton'
+import {
+  INVALID_EMAIL_MESSAGE,
+  isValidEmail,
+  normalizeEmail,
+} from '@/shared/lib/email'
 import { getErrorMessage } from '@/shared/lib/get-error-message'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
@@ -28,9 +33,20 @@ export function LoginPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    setError(null)
+
+    const normalizedEmail = normalizeEmail(email)
+
+    if (!isValidEmail(normalizedEmail)) {
+      setError(INVALID_EMAIL_MESSAGE)
+      toast.error('Помилка входу', {
+        description: INVALID_EMAIL_MESSAGE,
+      })
+      return
+    }
 
     try {
-      await login({ email, password })
+      await login({ email: normalizedEmail, password })
       toast.success('Вхід успішний', {
         description: 'Ви успішно увійшли в акаунт.',
       })
@@ -67,6 +83,8 @@ export function LoginPage() {
               placeholder="you@example.com"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
+              pattern="^[^\s@]+@[^\s@]+\.[^\s@]+$"
+              title={INVALID_EMAIL_MESSAGE}
               required
             />
           </div>

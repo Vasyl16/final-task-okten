@@ -73,9 +73,10 @@ export function NewsPage() {
 
   const { data, isLoading, isError } = useGetAllNewsQuery(queryParams)
   const items = data?.items ?? []
-  const pageCount = data?.pageCount ?? 1
+  const resolvedPageCount = data?.pageCount
+  const pageCount = resolvedPageCount ?? 1
 
-  useClampPage(page, pageCount, setPage)
+  useClampPage(page, resolvedPageCount, setPage)
 
   return (
     <section className="space-y-8">

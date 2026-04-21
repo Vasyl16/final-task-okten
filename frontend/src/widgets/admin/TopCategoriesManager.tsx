@@ -10,16 +10,30 @@ import {
   useUpdateTopCategoryMutation,
 } from '@/shared/api/admin.api'
 import { getErrorMessage } from '@/shared/lib/get-error-message'
+import { useClampPage } from '@/shared/lib/use-search-param-page'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { LoadingSpinner } from '@/shared/ui/loading-spinner'
+import { Pagination } from '@/shared/ui/pagination'
 
-export function TopCategoriesManager() {
+const PAGE_SIZE = 12
+
+type TopCategoriesManagerProps = {
+  page: number
+  onPageChange: (next: number | ((current: number) => number)) => void
+}
+
+export function TopCategoriesManager({
+  page,
+  onPageChange,
+}: TopCategoriesManagerProps) {
   const { data: categoriesData, isLoading, error, refetch } = useGetAdminTopCategoriesQuery({
-    page: 1,
-    limit: 100,
+    page,
+    limit: PAGE_SIZE,
   })
   const categories = categoriesData?.items ?? []
+  const resolvedPageCount = categoriesData?.pageCount
+  const pageCount = resolvedPageCount ?? 1
   const { data: institutionsData } = useGetInstitutionsQuery({
     page: 1,
     limit: 50,
@@ -41,6 +55,13 @@ export function TopCategoriesManager() {
   >({})
   const [busyCategoryId, setBusyCategoryId] = useState<string | null>(null)
 
+  useClampPage(page, resolvedPageCount, onPageChange)
+
+  const normalizedCategoryNames = useMemo(
+    () => new Set(categories.map((category) => category.name.trim().toLowerCase())),
+    [categories],
+  )
+
   const availableInstitutionsByCategory = useMemo(() => {
     return categories.reduce<Record<string, typeof institutions>>((accumulator, category) => {
       const includedIds = new Set(category.institutions.map((institution) => institution.id))
@@ -61,8 +82,16 @@ export function TopCategoriesManager() {
       return
     }
 
+    if (normalizedCategoryNames.has(name.toLowerCase())) {
+      toast.error('Категорія вже існує', {
+        description: 'Топ-категорія з такою назвою вже є.',
+      })
+      return
+    }
+
     try {
       await createTopCategory({ name }).unwrap()
+      onPageChange(1)
       setNewCategoryName('')
       toast.success('Категорію створено')
     } catch (createError) {
@@ -306,6 +335,11 @@ export function TopCategoriesManager() {
               </article>
             )
           })}
+          <Pagination
+            page={page}
+            pageCount={pageCount}
+            onPageChange={onPageChange}
+          />
         </div>
       ) : null}
     </section>

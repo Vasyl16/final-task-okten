@@ -1,51 +1,51 @@
-import { Link } from 'react-router-dom'
-import { useEffect, useMemo, useState } from 'react'
-import { InstitutionCard } from '@/entities/institution/InstitutionCard'
-import { useAuthStore } from '@/entities/user/model/auth.store'
-import type { InstitutionListParams } from '@/entities/institution/types'
-import { useGetFavoriteInstitutionIdsQuery } from '@/shared/api/favorites/get-favorites.query'
-import { useGetInstitutionsQuery } from '@/shared/api/institutions/get-all.query'
-import { useInstitutionsListingParams } from '@/shared/lib/listing-search-params'
-import { useDebouncedValue } from '@/shared/lib/use-debounced-value'
-import { useClampPage } from '@/shared/lib/use-search-param-page'
-import { Button } from '@/shared/ui/button'
-import { Input } from '@/shared/ui/input'
-import { Pagination } from '@/shared/ui/pagination'
+import { Link } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { InstitutionCard } from '@/entities/institution/InstitutionCard';
+import { useAuthStore } from '@/entities/user/model/auth.store';
+import type { InstitutionListParams } from '@/entities/institution/types';
+import { useGetFavoriteInstitutionIdsQuery } from '@/shared/api/favorites/get-favorites.query';
+import { useGetInstitutionsQuery } from '@/shared/api/institutions/get-all.query';
+import { useInstitutionsListingParams } from '@/shared/lib/listing-search-params';
+import { useDebouncedValue } from '@/shared/lib/use-debounced-value';
+import { useClampPage } from '@/shared/lib/use-search-param-page';
+import { Button } from '@/shared/ui/button';
+import { Input } from '@/shared/ui/input';
+import { Pagination } from '@/shared/ui/pagination';
 
-const PAGE_SIZE = 12
+const PAGE_SIZE = 12;
 
 export function InstitutionsPage() {
-  const user = useAuthStore((state) => state.user)
+  const user = useAuthStore((state) => state.user);
   const { search, city, sort, page, setPage, setSearch, setCity, setSort } =
-    useInstitutionsListingParams()
+    useInstitutionsListingParams();
 
-  const [searchInput, setSearchInput] = useState(search)
-  const [cityInput, setCityInput] = useState(city)
-
-  useEffect(() => {
-    setSearchInput(search)
-  }, [search])
+  const [searchInput, setSearchInput] = useState(search);
+  const [cityInput, setCityInput] = useState(city);
 
   useEffect(() => {
-    setCityInput(city)
-  }, [city])
+    setSearchInput(search);
+  }, [search]);
 
-  const debouncedSearch = useDebouncedValue(searchInput)
-  const debouncedCity = useDebouncedValue(cityInput)
+  useEffect(() => {
+    setCityInput(city);
+  }, [city]);
+
+  const debouncedSearch = useDebouncedValue(searchInput);
+  const debouncedCity = useDebouncedValue(cityInput);
 
   useEffect(() => {
     if (debouncedSearch.trim() === search.trim()) {
-      return
+      return;
     }
-    setSearch(debouncedSearch)
-  }, [debouncedSearch, search, setSearch])
+    setSearch(debouncedSearch);
+  }, [debouncedSearch, search, setSearch]);
 
   useEffect(() => {
     if (debouncedCity.trim() === city.trim()) {
-      return
+      return;
     }
-    setCity(debouncedCity)
-  }, [city, debouncedCity, setCity])
+    setCity(debouncedCity);
+  }, [city, debouncedCity, setCity]);
 
   const requestParams = useMemo(
     () => ({
@@ -56,20 +56,27 @@ export function InstitutionsPage() {
       limit: PAGE_SIZE,
     }),
     [city, page, search, sort],
-  )
+  );
 
   const { data, isLoading, isFetching, error, refetch } =
-    useGetInstitutionsQuery(requestParams)
-  const { data: favoriteIdsList = [] } = useGetFavoriteInstitutionIdsQuery(undefined, {
-    skip: !user,
-  })
+    useGetInstitutionsQuery(requestParams);
+  const { data: favoriteIdsList = [] } = useGetFavoriteInstitutionIdsQuery(
+    undefined,
+    {
+      skip: !user,
+    },
+  );
 
-  const institutions = data?.items ?? []
-  const pageCount = data?.pageCount ?? 1
+  const institutions = data?.items ?? [];
+  const resolvedPageCount = data?.pageCount;
+  const pageCount = resolvedPageCount ?? 1;
 
-  useClampPage(page, pageCount, setPage)
+  useClampPage(page, resolvedPageCount, setPage);
 
-  const favoriteIds = useMemo(() => new Set(favoriteIdsList), [favoriteIdsList])
+  const favoriteIds = useMemo(
+    () => new Set(favoriteIdsList),
+    [favoriteIdsList],
+  );
 
   const institutionsWithFavorites = useMemo(
     () =>
@@ -78,12 +85,12 @@ export function InstitutionsPage() {
         isFavorite: favoriteIds.has(institution.id),
       })),
     [favoriteIds, institutions],
-  )
+  );
 
   const errorMessage =
     error && 'status' in error
       ? 'Не вдалося завантажити список закладів.'
-      : null
+      : null;
 
   return (
     <section className="space-y-6">
@@ -154,7 +161,11 @@ export function InstitutionsPage() {
       {!isLoading && errorMessage ? (
         <div className="rounded-2xl border border-destructive/20 bg-destructive/10 p-5">
           <p className="text-sm text-destructive">{errorMessage}</p>
-          <Button className="mt-4" variant="outline" onClick={() => void refetch()}>
+          <Button
+            className="mt-4"
+            variant="outline"
+            onClick={() => void refetch()}
+          >
             Спробувати ще раз
           </Button>
         </div>
@@ -176,9 +187,13 @@ export function InstitutionsPage() {
               <InstitutionCard key={institution.id} institution={institution} />
             ))}
           </div>
-          <Pagination page={page} pageCount={pageCount} onPageChange={setPage} />
+          <Pagination
+            page={page}
+            pageCount={pageCount}
+            onPageChange={setPage}
+          />
         </>
       ) : null}
     </section>
-  )
+  );
 }

@@ -23,9 +23,10 @@ export function TopPage() {
     institutionsLimit: INSTITUTIONS_PER_CATEGORY,
   })
   const categories = data?.items ?? []
-  const pageCount = data?.pageCount ?? 1
+  const resolvedPageCount = data?.pageCount
+  const pageCount = resolvedPageCount ?? 1
 
-  useClampPage(page, pageCount, setPage)
+  useClampPage(page, resolvedPageCount, setPage)
 
   const { data: favoriteIdsList = [] } = useGetFavoriteInstitutionIdsQuery()
 

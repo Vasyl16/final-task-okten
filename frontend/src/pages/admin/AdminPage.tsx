@@ -26,6 +26,8 @@ export function AdminPage() {
     setUsersPage,
     modPage,
     setModPage,
+    topCategoriesPage,
+    setTopCategoriesPage,
     analyticsListPage,
     setAnalyticsListPage,
     analyticsDetailPage,
@@ -75,7 +77,12 @@ export function AdminPage() {
       {activeTab === 'institutions' ? (
         <InstitutionsModeration page={modPage} onPageChange={setModPage} />
       ) : null}
-      {activeTab === 'topCategories' ? <TopCategoriesManager /> : null}
+      {activeTab === 'topCategories' ? (
+        <TopCategoriesManager
+          page={topCategoriesPage}
+          onPageChange={setTopCategoriesPage}
+        />
+      ) : null}
       {activeTab === 'analytics' ? (
         <AnalyticsDashboard
           listPage={analyticsListPage}

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { resolvePageCount, resolvePagination } from '../../common/pagination';
@@ -114,16 +114,30 @@ export class AdminService {
   }
 
   async createTopCategory(createTopCategoryDto: CreateTopCategoryDto) {
+    const name = createTopCategoryDto.name.trim();
+
+    await this.ensureTopCategoryNameIsUnique(name);
+
     return this.prismaService.topCategory.create({
-      data: createTopCategoryDto,
+      data: {
+        ...createTopCategoryDto,
+        name,
+      },
     });
   }
 
   async updateTopCategory(id: string, updateTopCategoryDto: UpdateTopCategoryDto) {
+    const name = updateTopCategoryDto.name.trim();
+
+    await this.ensureTopCategoryNameIsUnique(name, id);
+
     try {
       return await this.prismaService.topCategory.update({
         where: { id },
-        data: updateTopCategoryDto,
+        data: {
+          ...updateTopCategoryDto,
+          name,
+        },
       });
     } catch (error) {
       this.throwIfRecordNotFound(error, 'Top category not found');
@@ -215,6 +229,32 @@ export class AdminService {
 
     if (!institution) {
       throw new NotFoundException('Institution not found');
+    }
+  }
+
+  private async ensureTopCategoryNameIsUnique(
+    name: string,
+    excludeId?: string,
+  ): Promise<void> {
+    const existingCategory = await this.prismaService.topCategory.findFirst({
+      where: {
+        name: {
+          equals: name,
+          mode: 'insensitive',
+        },
+        ...(excludeId
+          ? {
+              id: {
+                not: excludeId,
+              },
+            }
+          : {}),
+      },
+      select: { id: true },
+    });
+
+    if (existingCategory) {
+      throw new ConflictException('Top category with this name already exists');
     }
   }
 }

@@ -125,35 +125,39 @@ export function ProfilePage() {
     );
 
   const myInstitutions = myInstitutionsData?.items ?? [];
-  const institutionsPageCount = myInstitutionsData?.pageCount ?? 1;
+  const resolvedInstitutionsPageCount = myInstitutionsData?.pageCount;
+  const institutionsPageCount = resolvedInstitutionsPageCount ?? 1;
   const favorites = favoritesData?.items ?? [];
-  const favoritesPageCount = favoritesData?.pageCount ?? 1;
+  const resolvedFavoritesPageCount = favoritesData?.pageCount;
+  const favoritesPageCount = resolvedFavoritesPageCount ?? 1;
   const myReviews = myReviewsData?.items ?? [];
-  const reviewsPageCount = myReviewsData?.pageCount ?? 1;
+  const resolvedReviewsPageCount = myReviewsData?.pageCount;
+  const reviewsPageCount = resolvedReviewsPageCount ?? 1;
   const myPiyachok = myPiyachokData?.items ?? [];
-  const piyachokPageCount = myPiyachokData?.pageCount ?? 1;
+  const resolvedPiyachokPageCount = myPiyachokData?.pageCount;
+  const piyachokPageCount = resolvedPiyachokPageCount ?? 1;
 
   useClampPage(
     institutionsPage,
-    institutionsPageCount,
+    resolvedInstitutionsPageCount,
     setInstitutionsPage,
     activeTab === 'institutions',
   );
   useClampPage(
     favoritesPage,
-    favoritesPageCount,
+    resolvedFavoritesPageCount,
     setFavoritesPage,
     activeTab === 'favorites',
   );
   useClampPage(
     reviewsPage,
-    reviewsPageCount,
+    resolvedReviewsPageCount,
     setReviewsPage,
     activeTab === 'reviews',
   );
   useClampPage(
     piyachokPage,
-    piyachokPageCount,
+    resolvedPiyachokPageCount,
     setPiyachokPage,
     activeTab === 'piyachok',
   );

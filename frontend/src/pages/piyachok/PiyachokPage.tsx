@@ -67,7 +67,8 @@ export function PiyachokPage() {
     refetch: refetchPublic,
   } = useGetAllPiyachokQuery(queryParams)
   const publicFeed = publicData?.items ?? []
-  const pageCount = publicData?.pageCount ?? 1
+  const resolvedPageCount = publicData?.pageCount
+  const pageCount = resolvedPageCount ?? 1
 
   const {
     data: myFeedData,
@@ -81,10 +82,11 @@ export function PiyachokPage() {
     },
   )
   const myFeed = myFeedData?.items ?? []
-  const myPageCount = myFeedData?.pageCount ?? 1
+  const resolvedMyPageCount = myFeedData?.pageCount
+  const myPageCount = resolvedMyPageCount ?? 1
 
-  useClampPage(page, pageCount, setPage)
-  useClampPage(myPage, myPageCount, setMyPage)
+  useClampPage(page, resolvedPageCount, setPage)
+  useClampPage(myPage, resolvedMyPageCount, setMyPage)
 
   const [deletePiyachok, { isLoading: isDeleting }] = useDeletePiyachokMutation()
 

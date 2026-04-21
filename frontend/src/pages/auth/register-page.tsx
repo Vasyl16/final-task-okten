@@ -3,6 +3,11 @@ import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/entities/user/model/auth.store'
 import { GoogleSignInButton } from '@/features/auth/GoogleSignInButton'
+import {
+  INVALID_EMAIL_MESSAGE,
+  isValidEmail,
+  normalizeEmail,
+} from '@/shared/lib/email'
 import { getErrorMessage } from '@/shared/lib/get-error-message'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
@@ -21,7 +26,10 @@ export function RegisterPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    setError(null)
+
     const trimmedName = name.trim()
+    const normalizedEmail = normalizeEmail(email)
 
     if (trimmedName.length < 2) {
       const message = "Ім'я має містити щонайменше 2 символи."
@@ -41,6 +49,14 @@ export function RegisterPage() {
       return
     }
 
+    if (!isValidEmail(normalizedEmail)) {
+      setError(INVALID_EMAIL_MESSAGE)
+      toast.error('Помилка реєстрації', {
+        description: INVALID_EMAIL_MESSAGE,
+      })
+      return
+    }
+
     if (password !== passwordConfirm) {
       const message = 'Паролі не збігаються. Повторіть пароль у другому полі.'
       setError(message)
@@ -53,7 +69,7 @@ export function RegisterPage() {
     try {
       await register({
         name: trimmedName,
-        email,
+        email: normalizedEmail,
         password,
         passwordConfirm,
       })
@@ -112,6 +128,8 @@ export function RegisterPage() {
               placeholder="you@example.com"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
+              pattern="^[^\s@]+@[^\s@]+\.[^\s@]+$"
+              title={INVALID_EMAIL_MESSAGE}
               required
             />
           </div>

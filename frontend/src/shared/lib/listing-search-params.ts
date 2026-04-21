@@ -304,6 +304,28 @@ function isProfileTab(value: string): value is ProfileTab {
   return (PROFILE_TAB_IDS as readonly string[]).includes(value)
 }
 
+function inferProfileTab(searchParams: URLSearchParams): ProfileTab {
+  const raw = searchParams.get('tab')
+  if (raw && isProfileTab(raw)) {
+    return raw
+  }
+
+  if (searchParams.has('ipage')) {
+    return 'institutions'
+  }
+  if (searchParams.has('fpage')) {
+    return 'favorites'
+  }
+  if (searchParams.has('mrpage')) {
+    return 'reviews'
+  }
+  if (searchParams.has('pypage')) {
+    return 'piyachok'
+  }
+
+  return 'info'
+}
+
 function makeProfilePageSetter(
   setSearchParams: ReturnType<typeof useSearchParams>[1],
   key: string,
@@ -330,13 +352,7 @@ function makeProfilePageSetter(
 export function useProfileListingParams() {
   const [searchParams, setSearchParams] = useSearchParams()
 
-  const tab = useMemo((): ProfileTab => {
-    const raw = searchParams.get('tab')
-    if (raw && isProfileTab(raw)) {
-      return raw
-    }
-    return 'info'
-  }, [searchParams])
+  const tab = useMemo((): ProfileTab => inferProfileTab(searchParams), [searchParams])
 
   const institutionsPage = useMemo(
     () => readPositiveInt(searchParams, 'ipage', 1),
@@ -360,11 +376,7 @@ export function useProfileListingParams() {
       setSearchParams(
         (prev) => {
           const nextParams = new URLSearchParams(prev)
-          if (next === 'info') {
-            nextParams.delete('tab')
-          } else {
-            nextParams.set('tab', next)
-          }
+          nextParams.set('tab', next)
           return nextParams
         },
         { replace: true },
@@ -404,7 +416,7 @@ export function useProfileListingParams() {
   }
 }
 
-/** `/admin`: вкладка + пагінація таблиць і аналітики (`upage`, `mpage`, `apage`, `dpage`, `aid`). */
+/** `/admin`: вкладка + пагінація таблиць і аналітики (`upage`, `mpage`, `tpage`, `apage`, `dpage`, `aid`). */
 export const ADMIN_TAB_IDS = [
   'users',
   'institutions',
@@ -415,6 +427,32 @@ export type AdminTab = (typeof ADMIN_TAB_IDS)[number]
 
 function isAdminTab(value: string): value is AdminTab {
   return (ADMIN_TAB_IDS as readonly string[]).includes(value)
+}
+
+function inferAdminTab(searchParams: URLSearchParams): AdminTab {
+  const raw = searchParams.get('tab')
+  if (raw && isAdminTab(raw)) {
+    return raw
+  }
+
+  if (
+    (searchParams.get('aid') ?? '').trim() !== '' ||
+    searchParams.has('apage') ||
+    searchParams.has('dpage')
+  ) {
+    return 'analytics'
+  }
+  if (searchParams.has('mpage')) {
+    return 'institutions'
+  }
+  if (searchParams.has('tpage')) {
+    return 'topCategories'
+  }
+  if (searchParams.has('upage')) {
+    return 'users'
+  }
+
+  return 'users'
 }
 
 function makeAdminPageSetter(
@@ -443,13 +481,7 @@ function makeAdminPageSetter(
 export function useAdminListingParams() {
   const [searchParams, setSearchParams] = useSearchParams()
 
-  const tab = useMemo((): AdminTab => {
-    const raw = searchParams.get('tab')
-    if (raw && isAdminTab(raw)) {
-      return raw
-    }
-    return 'users'
-  }, [searchParams])
+  const tab = useMemo((): AdminTab => inferAdminTab(searchParams), [searchParams])
 
   const usersPage = useMemo(
     () => readPositiveInt(searchParams, 'upage', 1),
@@ -457,6 +489,10 @@ export function useAdminListingParams() {
   )
   const modPage = useMemo(
     () => readPositiveInt(searchParams, 'mpage', 1),
+    [searchParams],
+  )
+  const topCategoriesPage = useMemo(
+    () => readPositiveInt(searchParams, 'tpage', 1),
     [searchParams],
   )
   const analyticsListPage = useMemo(
@@ -474,11 +510,7 @@ export function useAdminListingParams() {
       setSearchParams(
         (prev) => {
           const nextParams = new URLSearchParams(prev)
-          if (next === 'users') {
-            nextParams.delete('tab')
-          } else {
-            nextParams.set('tab', next)
-          }
+          nextParams.set('tab', next)
           return nextParams
         },
         { replace: true },
@@ -493,6 +525,10 @@ export function useAdminListingParams() {
   )
   const setModPage = useMemo(
     () => makeAdminPageSetter(setSearchParams, 'mpage'),
+    [setSearchParams],
+  )
+  const setTopCategoriesPage = useMemo(
+    () => makeAdminPageSetter(setSearchParams, 'tpage'),
     [setSearchParams],
   )
   const setAnalyticsListPage = useMemo(
@@ -527,12 +563,14 @@ export function useAdminListingParams() {
     tab,
     usersPage,
     modPage,
+    topCategoriesPage,
     analyticsListPage,
     analyticsDetailPage,
     analyticsInstitutionId,
     setTab,
     setUsersPage,
     setModPage,
+    setTopCategoriesPage,
     setAnalyticsListPage,
     setAnalyticsDetailPage,
     setAnalyticsInstitutionId,

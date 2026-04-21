@@ -60,12 +60,15 @@ export function useSearchParamPage(
 /** When total pages shrink (e.g. after filter), clamp current page into range. */
 export function useClampPage(
   page: number,
-  pageCount: number,
+  pageCount: number | undefined,
   setPage: (next: number | ((current: number) => number)) => void,
   enabled = true,
 ): void {
   useEffect(() => {
     if (!enabled) {
+      return
+    }
+    if (typeof pageCount !== 'number') {
       return
     }
     if (pageCount >= 1 && page > pageCount) {
